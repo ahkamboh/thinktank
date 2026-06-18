@@ -1,0 +1,34 @@
+{
+  "name": "@thinktank/mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "thinktank MCP server (stdio + Streamable HTTP) exposing the local memory brain to any MCP client, plus a localhost-only /ingest endpoint for the browser extension.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "serve": "node --no-warnings=ExperimentalWarning --import tsx src/stdio.ts",
+    "serve:http": "node --no-warnings=ExperimentalWarning --import tsx src/http.ts",
+    "test": "node --no-warnings=ExperimentalWarning --import tsx test/smoke.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@thinktank/core": "workspace:*",
+    "express": "^5.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

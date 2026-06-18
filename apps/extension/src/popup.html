@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>thinktank</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        width: 300px; margin: 0; padding: 16px;
+        font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: #0b0f10; color: #e6edf0;
+      }
+      h1 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 15px; }
+      h1 .dot { width: 10px; height: 10px; border-radius: 50%; background: #14b8a6; }
+      .sub { margin: 0 0 14px; color: #8b9aa0; font-size: 11px; }
+      label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 11px; color: #b8c4c9; }
+      input {
+        width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #243033;
+        background: #11181b; color: #e6edf0; font-size: 13px;
+      }
+      .row { display: flex; gap: 8px; }
+      .row > * { flex: 1; }
+      button {
+        margin-top: 10px; width: 100%; padding: 9px 10px; border: none; border-radius: 8px;
+        cursor: pointer; font-weight: 600; font-size: 13px; color: #fff; background: #14b8a6;
+      }
+      button.secondary { background: #243033; color: #e6edf0; }
+      button:active { opacity: .9; }
+      #status { margin-top: 10px; min-height: 16px; font-size: 11px; }
+      #status.ok { color: #34d399; }
+      #status.err { color: #f87171; }
+      #status.warn { color: #fbbf24; }
+      .note { margin-top: 14px; padding-top: 10px; border-top: 1px solid #1c2629; color: #6f7e84; font-size: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1><span class="dot"></span> thinktank</h1>
+    <p class="sub">One private memory for every AI.</p>
+
+    <label for="project">Project</label>
+    <input id="project" type="text" placeholder="web" />
+
+    <label for="port">Local port</label>
+    <div class="row">
+      <input id="port" type="number" placeholder="4319" />
+      <button class="secondary" id="test" style="margin-top:0">Test</button>
+    </div>
+
+    <button id="import-current">Import this chat</button>
+    <button class="secondary" id="import-all">Import all history</button>
+
+    <div id="status"></div>
+
+    <p class="note">
+      Your chats are sent only to thinktank on your own computer
+      (127.0.0.1). Nothing ever leaves your device.
+    </p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

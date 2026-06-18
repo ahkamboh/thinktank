@@ -1,0 +1,28 @@
+{
+  "name": "@thinktank/ingest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "thinktank ingestion: parsers for official ChatGPT and Claude.ai data exports into MemoryEvents.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --no-warnings=ExperimentalWarning --import tsx test/parsers.ts"
+  },
+  "dependencies": {
+    "@thinktank/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
