@@ -8,6 +8,7 @@ import type { ExportFormat } from '@thinktank/ingest';
 import { setupAgent, type Agent } from './setup.js';
 import { runDemo } from './demo.js';
 import { startDashboard, DEFAULT_DASHBOARD_PORT } from './dashboard.js';
+import { runReprocess } from './reprocess.js';
 
 const HELP = `thinktank - one private memory brain for all your AI agents
 
@@ -25,6 +26,11 @@ Usage:
   thinktank dashboard [--port=N] [--open]
                                   Open the local web dashboard to browse, search,
                                   and manage memories (default port ${DEFAULT_DASHBOARD_PORT}).
+  thinktank reprocess [--apply] [--sample=N] [--limit=N] [--project=NAME]
+                                  Re-judge stored memories: drop non-durable
+                                  noise and fix kinds. DRY RUN by default;
+                                  pass --apply to write. Uses the LLM extractor
+                                  when an API key is set, else the heuristic.
   thinktank demo                  Run a narrated, self-contained end-to-end demo
                                   (uses a throwaway db; touches nothing real).
   thinktank help                  Show this help.
@@ -32,6 +38,9 @@ Usage:
 Env:
   THINKTANK_DB                    Override the database path
                                   (default: ${resolveDbPath()}).
+  ANTHROPIC_API_KEY / OPENAI_API_KEY
+                                  Enable high-quality LLM extraction/reprocess.
+  THINKTANK_EXTRACT_MODEL         Override the extraction model.
 `;
 
 function getFlagNumber(args: string[], name: string): number | undefined {
@@ -165,6 +174,14 @@ async function main(): Promise<void> {
       break;
     case 'dashboard':
       await cmdDashboard(rest);
+      break;
+    case 'reprocess':
+      await runReprocess({
+        apply: rest.includes('--apply'),
+        limit: getFlagNumber(rest, 'limit'),
+        sample: getFlagNumber(rest, 'sample'),
+        project: getFlagString(rest, 'project'),
+      });
       break;
     case 'demo':
       await runDemo();

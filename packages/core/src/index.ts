@@ -30,6 +30,13 @@ export {
   LLMExtractor,
   pickExtractor,
   classify,
+  isNoise,
+  pickClassifier,
+  HeuristicClassifier,
+  LLMClassifier,
+  type Provider,
+  type Classifier,
+  type MemoryJudgement,
 } from './extract.js';
 export {
   MergeEngine,
