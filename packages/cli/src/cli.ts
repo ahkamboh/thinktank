@@ -7,6 +7,7 @@ import { parseExport, UnknownExportError } from '@thinktank/ingest';
 import type { ExportFormat } from '@thinktank/ingest';
 import { setupAgent, type Agent } from './setup.js';
 import { runDemo } from './demo.js';
+import { startDashboard, DEFAULT_DASHBOARD_PORT } from './dashboard.js';
 
 const HELP = `thinktank - one private memory brain for all your AI agents
 
@@ -21,6 +22,9 @@ Usage:
   thinktank ingest <file.json> [--project=NAME] [--source=chatgpt|claude]
                                   Import a ChatGPT or Claude.ai data export (or
                                   a captured-conversation JSON) into memory.
+  thinktank dashboard [--port=N] [--open]
+                                  Open the local web dashboard to browse, search,
+                                  and manage memories (default port ${DEFAULT_DASHBOARD_PORT}).
   thinktank demo                  Run a narrated, self-contained end-to-end demo
                                   (uses a throwaway db; touches nothing real).
   thinktank help                  Show this help.
@@ -46,6 +50,17 @@ async function cmdServe(args: string[]): Promise<void> {
   } else {
     await startStdio();
   }
+}
+
+async function cmdDashboard(args: string[]): Promise<void> {
+  const handle = await startDashboard({
+    port: getFlagNumber(args, 'port'),
+    open: args.includes('--open'),
+  });
+  console.error(
+    `thinktank dashboard ready -> ${handle.url}\nPress Ctrl+C to stop.`,
+  );
+  // Keep the process alive; the server's SIGINT/SIGTERM handlers stop it.
 }
 
 function cmdSetup(args: string[]): void {
@@ -147,6 +162,9 @@ async function main(): Promise<void> {
       break;
     case 'ingest':
       await cmdIngest(rest);
+      break;
+    case 'dashboard':
+      await cmdDashboard(rest);
       break;
     case 'demo':
       await runDemo();

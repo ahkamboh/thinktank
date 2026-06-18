@@ -14,6 +14,9 @@ export {
   type SearchOptions,
   type NearestHit,
   type NearestOptions,
+  type ListOptions,
+  type ListResult,
+  type Facet,
 } from './db.js';
 export {
   KIND_BASE,
