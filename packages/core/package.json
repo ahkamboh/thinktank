@@ -15,9 +15,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run test:roundtrip && pnpm run test:merge && pnpm run test:redact && pnpm run test:crypto",
+    "test": "pnpm run test:roundtrip && pnpm run test:merge && pnpm run test:extract && pnpm run test:redact && pnpm run test:crypto",
     "test:roundtrip": "node --no-warnings=ExperimentalWarning --import tsx test/roundtrip.ts",
     "test:merge": "node --no-warnings=ExperimentalWarning --import tsx test/merge.ts",
+    "test:extract": "node --no-warnings=ExperimentalWarning --import tsx test/extract.ts",
     "test:redact": "node --no-warnings=ExperimentalWarning --import tsx test/redact.ts",
     "test:crypto": "node --no-warnings=ExperimentalWarning --import tsx test/crypto.ts"
   },
