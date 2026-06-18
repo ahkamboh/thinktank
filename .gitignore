@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# local memory databases (never commit a user's brain)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+.thinktank/
+
+# local model cache (downloaded embedding models)
+.models/
+.cache/
+
+# os / editor
+.DS_Store
+*.log
+npm-debug.log*

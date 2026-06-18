@@ -1,0 +1,21 @@
+{
+  "name": "@thinktank/extension",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "thinktank browser extension: an 'Import to memory' button on every ChatGPT and Claude.ai chat. Captures the conversation and sends it ONLY to thinktank on localhost. Nothing leaves your device.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --no-warnings=ExperimentalWarning --import tsx test/ingest.ts"
+  },
+  "devDependencies": {
+    "@thinktank/core": "workspace:*",
+    "@thinktank/mcp-server": "workspace:*",
+    "@types/chrome": "^0.0.300",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

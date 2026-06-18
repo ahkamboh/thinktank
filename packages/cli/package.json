@@ -1,0 +1,26 @@
+{
+  "name": "@thinktank/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "thinktank CLI: serve (stdio/http), setup (wire MCP into Cursor/Claude/Codex), and ingest.",
+  "type": "module",
+  "bin": {
+    "thinktank": "./dist/cli.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node --no-warnings=ExperimentalWarning --import tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@thinktank/core": "workspace:*",
+    "@thinktank/ingest": "workspace:*",
+    "@thinktank/mcp-server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
