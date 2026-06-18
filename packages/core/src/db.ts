@@ -86,6 +86,36 @@ export interface NearestOptions {
   excludeId?: number;
 }
 
+/** Filters for the dashboard list view. */
+export interface ListOptions {
+  /** Restrict to a project. */
+  project?: string;
+  /** Restrict to a source (the `source` column: chatgpt, claude, cursor...). */
+  source?: string;
+  /** Restrict to a kind. */
+  kind?: string;
+  /** active | superseded | all (default active). */
+  status?: MemoryStatus | 'all';
+  /** When present, rank by hybrid relevance instead of recency. */
+  query?: string;
+  /** Page size (default 25, max 200). */
+  limit?: number;
+  /** Page offset. */
+  offset?: number;
+}
+
+/** A page of memories plus the total count matching the filters. */
+export interface ListResult {
+  rows: Memory[];
+  total: number;
+}
+
+/** A facet value with its row count, for dashboard filter controls. */
+export interface Facet {
+  value: string;
+  count: number;
+}
+
 function parseSources(json: string | null): Provenance[] {
   if (!json) return [];
   try {
@@ -636,6 +666,166 @@ export class MemoryStore {
     const byKind: Record<string, number> = {};
     for (const k of kinds) byKind[k.kind] = k.c;
     return { total, active, superseded, contradictions, byKind };
+  }
+
+  // ----- Dashboard / management read + write APIs -------------------------
+
+  /** Distinct projects with their row counts, most populated first. */
+  listProjects(): Array<{ project: string | null; count: number }> {
+    const rows = this.db
+      .prepare(
+        'SELECT project, COUNT(*) AS c FROM memories GROUP BY project ORDER BY c DESC',
+      )
+      .all() as Array<{ project: string | null; c: number }>;
+    return rows.map((r) => ({ project: r.project, count: r.c }));
+  }
+
+  /** Facet counts powering the dashboard filter dropdowns. */
+  facets(): {
+    sources: Facet[];
+    tools: Facet[];
+    kinds: Facet[];
+    projects: Array<{ value: string | null; count: number }>;
+  } {
+    const group = (col: string) =>
+      this.db
+        .prepare(
+          `SELECT ${col} AS v, COUNT(*) AS c FROM memories GROUP BY ${col} ORDER BY c DESC`,
+        )
+        .all() as Array<{ v: string | null; c: number }>;
+    const nonNull = (rows: Array<{ v: string | null; c: number }>): Facet[] =>
+      rows
+        .filter((r) => r.v !== null)
+        .map((r) => ({ value: r.v as string, count: r.c }));
+    return {
+      sources: nonNull(group('source')),
+      tools: nonNull(group('tool')),
+      kinds: nonNull(group('kind')),
+      projects: group('project').map((r) => ({ value: r.v, count: r.c })),
+    };
+  }
+
+  /**
+   * Filtered, paginated list for the dashboard. With `query`, ranks by hybrid
+   * relevance then applies facet filters; without it, a plain recency-ordered
+   * scan. Returns the page plus the total matching count (for pagination).
+   */
+  async list(opts: ListOptions = {}): Promise<ListResult> {
+    const limit = Math.max(1, Math.min(opts.limit ?? 25, 200));
+    const offset = Math.max(0, opts.offset ?? 0);
+    const status: MemoryStatus | 'all' = opts.status ?? 'active';
+
+    const q = opts.query?.trim();
+    if (q) {
+      // Search mode: rank by relevance, then filter + paginate in JS.
+      const hits = await this.search(q, {
+        limit: 200,
+        includeSuperseded: status !== 'active',
+        project: opts.project,
+      });
+      const filtered = hits.filter((m) => {
+        if (opts.source && m.source !== opts.source && m.tool !== opts.source)
+          return false;
+        if (opts.kind && m.kind !== opts.kind) return false;
+        if (status !== 'all' && m.status !== status) return false;
+        return true;
+      });
+      return {
+        rows: filtered.slice(offset, offset + limit),
+        total: filtered.length,
+      };
+    }
+
+    // Plain scan with SQL filters.
+    const where: string[] = [];
+    const params: Array<string> = [];
+    if (opts.project) {
+      where.push('project = ?');
+      params.push(opts.project);
+    }
+    if (opts.source) {
+      // Match either the coarse source (chatgpt) or the concrete tool
+      // (chatgpt-web), so both work as a "source" filter.
+      where.push('(source = ? OR tool = ?)');
+      params.push(opts.source, opts.source);
+    }
+    if (opts.kind) {
+      where.push('kind = ?');
+      params.push(opts.kind);
+    }
+    if (status !== 'all') {
+      where.push('status = ?');
+      params.push(status);
+    }
+    const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const total = (
+      this.db
+        .prepare(`SELECT COUNT(*) AS c FROM memories ${clause}`)
+        .get(...params) as { c: number }
+    ).c;
+
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM memories ${clause} ORDER BY last_seen DESC LIMIT ? OFFSET ?`,
+      )
+      .all(...params, limit, offset) as unknown as MemoryRow[];
+
+    return { rows: rows.map((r) => this.toMemory(r)), total };
+  }
+
+  /**
+   * Delete a memory and its vector + FTS index entries, keeping all three
+   * tables consistent. Returns true if the memory existed.
+   */
+  deleteMemory(id: number): boolean {
+    if (!this.getById(id)) return false;
+    // Virtual-table rowids must be bound as BigInt (node:sqlite binds plain
+    // numbers as REAL, which vec0/fts5 reject for rowid matching).
+    const rowid = BigInt(id);
+    this.db.prepare('DELETE FROM memories WHERE id = ?').run(id);
+    this.db.prepare('DELETE FROM memories_vec WHERE rowid = ?').run(rowid);
+    // FTS rows only exist when encryption is off (see insertMemory); the delete
+    // is a harmless no-op otherwise.
+    this.db.prepare('DELETE FROM memories_fts WHERE rowid = ?').run(rowid);
+    return true;
+  }
+
+  /** Re-classify a memory's kind (e.g. fix an over-eager "fact"). */
+  updateKind(id: number, kind: MemoryKind): Memory | null {
+    const existing = this.getById(id);
+    if (!existing) return null;
+    const importance = baseImportance(kind, existing.seenCount);
+    this.db
+      .prepare(
+        'UPDATE memories SET kind = ?, importance = ?, updated_at = ? WHERE id = ?',
+      )
+      .run(kind, importance, Date.now(), id);
+    return this.getById(id);
+  }
+
+  /** Paginated contradictions for the dashboard. */
+  getContradictions(
+    opts: { project?: string; limit?: number; offset?: number } = {},
+  ): { rows: Contradiction[]; total: number } {
+    const limit = Math.max(1, Math.min(opts.limit ?? 25, 200));
+    const offset = Math.max(0, opts.offset ?? 0);
+    const where = opts.project ? 'WHERE project = ?' : '';
+    const params: string[] = opts.project ? [opts.project] : [];
+
+    const total = (
+      this.db
+        .prepare(`SELECT COUNT(*) AS c FROM contradictions ${where}`)
+        .get(...params) as { c: number }
+    ).c;
+
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM contradictions ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      )
+      .all(...params, limit, offset) as unknown as ContradictionRow[];
+
+    return { rows: rows.map((r) => this.toContradiction(r)), total };
   }
 
   close(): void {

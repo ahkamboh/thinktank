@@ -43,7 +43,13 @@ importers:
       '@thinktank/mcp-server':
         specifier: workspace:*
         version: link:../mcp-server
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
     devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.2
