@@ -68,6 +68,23 @@ async function main() {
     'all five memory tools are listed',
   );
 
+  // ---- auto-use: server instructions + assertive tool descriptions --------
+  const instructions = client.getInstructions() ?? '';
+  assert(
+    /memory_resume/.test(instructions) &&
+      /memory_search/.test(instructions) &&
+      /memory_save/.test(instructions),
+    'server surfaces auto-use instructions naming all three core tools',
+  );
+  const descOf = (name: string) =>
+    tools.tools.find((t) => t.name === name)?.description ?? '';
+  assert(/FIRST/.test(descOf('memory_search')), 'memory_search description says call it FIRST');
+  assert(/START/.test(descOf('memory_resume')), 'memory_resume description says call at START');
+  assert(
+    /automatically/i.test(descOf('memory_save')),
+    'memory_save description says call automatically',
+  );
+
   const saveRes = await client.callTool({
     name: 'memory_save',
     arguments: {

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
 import { startStdio, startHttp, ingestConversation, getBrain, closeBrain } from '@thinktank/mcp-server';
 import type { IngestBody } from '@thinktank/mcp-server';
 import { resolveDbPath } from '@thinktank/mcp-server';
@@ -8,6 +7,7 @@ import type { ExportFormat } from '@thinktank/ingest';
 import { setupAgent, type Agent } from './setup.js';
 import { runDemo } from './demo.js';
 import { startDashboard, DEFAULT_DASHBOARD_PORT } from './dashboard.js';
+import { loadExportFromPath, ImportInputError } from './export-source.js';
 import { runReprocess } from './reprocess.js';
 
 const HELP = `thinktank - one private memory brain for all your AI agents
@@ -17,12 +17,18 @@ Usage:
   thinktank serve --http [--port=N]
                                   Start the local HTTP server (MCP + /ingest
                                   capture endpoint for the browser extension).
-  thinktank setup --cursor|--claude|--codex [...]
+  thinktank setup --cursor|--claude|--codex [--no-rules]
                                   Wire thinktank into one or more agents' MCP
-                                  config so they share this memory.
-  thinktank ingest <file.json> [--project=NAME] [--source=chatgpt|claude]
-                                  Import a ChatGPT or Claude.ai data export (or
-                                  a captured-conversation JSON) into memory.
+                                  config so they share this memory. Also installs
+                                  a behavioral "auto-use" rule per agent so it
+                                  calls the memory tools automatically; pass
+                                  --no-rules to wire the server only.
+  thinktank ingest <path> [--project=NAME] [--source=chatgpt|claude]
+                                  Import a ChatGPT or Claude.ai data export into
+                                  memory. <path> may be the unzipped export
+                                  DIRECTORY (reads its conversations.json), the
+                                  export .zip, a conversations.json, or a
+                                  captured-conversation JSON.
   thinktank dashboard [--port=N] [--open]
                                   Open the local web dashboard to browse, search,
                                   and manage memories (default port ${DEFAULT_DASHBOARD_PORT}).
@@ -41,6 +47,11 @@ Env:
   ANTHROPIC_API_KEY / OPENAI_API_KEY
                                   Enable high-quality LLM extraction/reprocess.
   THINKTANK_EXTRACT_MODEL         Override the extraction model.
+  NODE_OPTIONS=--max-old-space-size=4096
+                                  Raise Node's heap for very large exports
+                                  (a ~130MB conversations.json needs ~1GB heap
+                                  to parse; the default is usually enough on
+                                  64-bit machines).
 `;
 
 function getFlagNumber(args: string[], name: string): number | undefined {
@@ -84,12 +95,40 @@ function cmdSetup(args: string[]): void {
     process.exit(1);
   }
 
+  const installRules = !args.includes('--no-rules');
+  const written: string[] = [];
+
   for (const agent of agents) {
-    const r = setupAgent(agent);
+    const r = setupAgent(agent, { installRules });
     console.log(`\n[${r.agent}] wrote MCP config -> ${r.path}`);
     console.log(r.snippet);
     console.log(`Verify: ${r.verify}`);
+    written.push(`${r.agent} MCP config: ${r.path}`);
+    if (r.rule) {
+      console.log(`[${r.agent}] auto-use rule ${r.rule.status} -> ${r.rule.path}`);
+      written.push(`${r.agent} auto-use rule (${r.rule.status}): ${r.rule.path}`);
+    }
   }
+
+  console.log('\nFiles written:');
+  for (const w of written) console.log(`  - ${w}`);
+
+  if (installRules) {
+    console.log(
+      '\nAuto-use is now installed via behavioral rules + the server\'s own ' +
+        'instructions, so agents resume/search/save memory without being asked. ' +
+        'Honest note: this raises adherence to ~90%, not a hard guarantee ' +
+        '(a transparent MCP proxy would make it 100%). Tip: type "tank" or ' +
+        '"thinktank" to force a memory check.',
+    );
+  } else {
+    console.log(
+      '\nSkipped behavioral rule install (--no-rules): the memory tools are ' +
+        'wired, but agents will not call them automatically. The server still ' +
+        'ships auto-use instructions, so adherence is lower but non-zero.',
+    );
+  }
+
   console.log(
     `\nMemory database: ${resolveDbPath()}\nDone. Restart the agent(s) to pick up thinktank.`,
   );
@@ -110,9 +149,17 @@ async function cmdIngest(args: string[]): Promise<void> {
 
   let json: unknown;
   try {
-    json = JSON.parse(readFileSync(file, 'utf8'));
+    // Accepts an unzipped export directory (reads conversations.json), an
+    // export .zip, or a JSON file. Large exports (~130MB) parse fine under
+    // Node's default heap; see NODE_OPTIONS in `thinktank help` if you hit OOM.
+    json = loadExportFromPath(file);
   } catch (err) {
-    console.error(`ingest: could not read/parse ${file}: ${String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      err instanceof ImportInputError
+        ? `ingest: ${msg}`
+        : `ingest: could not read/parse ${file}: ${msg}`,
+    );
     process.exit(1);
   }
 

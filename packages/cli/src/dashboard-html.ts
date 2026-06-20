@@ -91,6 +91,37 @@ export const DASHBOARD_HTML = `<!doctype html>
 
   .pager { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 22px; color: var(--muted); }
   .state { text-align: center; color: var(--faint); padding: 48px 0; }
+
+  .import-help { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0 0 18px; max-width: 720px; }
+  .import-help b { color: var(--text); font-weight: 600; }
+  .import-grid { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
+  .drop { border: 1.5px dashed var(--border); border-radius: var(--radius); background: var(--panel); padding: 30px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover { border-color: var(--accent-2); }
+  .drop.drag { border-color: var(--accent); background: var(--panel-2); }
+  .drop .big { font-size: 15px; color: var(--text); margin-bottom: 4px; }
+  .drop .sub { font-size: 12px; color: var(--faint); }
+  .drop .fname { color: var(--teal); font-size: 13px; margin-top: 10px; word-break: break-all; }
+  .or { color: var(--faint); font-size: 12px; text-align: center; letter-spacing: .04em; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .field input[type=text], .field textarea {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 12px; font-size: 13px; outline: none; width: 100%;
+  }
+  .field input[type=text]:focus, .field textarea:focus { border-color: var(--accent-2); }
+  .field textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, monospace; }
+  .import-actions { display: flex; gap: 12px; align-items: center; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #160a04; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.08); border-color: var(--accent); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .import-result { border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; background: var(--panel); }
+  .import-result.ok { border-color: #1f4a3a; }
+  .import-result.err { border-color: var(--danger); color: #fca5a5; }
+  .import-result h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+  .sumgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .sumgrid .s { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .sumgrid .s .n { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+  .sumgrid .s .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
   .hidden { display: none; }
 </style>
 </head>
@@ -107,6 +138,7 @@ export const DASHBOARD_HTML = `<!doctype html>
   <div class="tabs">
     <button class="tab active" data-tab="memories">Memories</button>
     <button class="tab" data-tab="contradictions">Contradictions</button>
+    <button class="tab" data-tab="import">Import</button>
   </div>
 
   <section id="tab-memories">
@@ -138,6 +170,37 @@ export const DASHBOARD_HTML = `<!doctype html>
       <button class="btn" id="cprev">Prev</button>
       <span id="cpageinfo">-</span>
       <button class="btn" id="cnext">Next</button>
+    </div>
+  </section>
+
+  <section id="tab-import" class="hidden">
+    <p class="import-help">
+      Export your data from <b>ChatGPT</b> (Settings &rarr; Data controls &rarr; Export data) or
+      <b>Claude</b> (Settings &rarr; Export data), then drop the <b>.zip</b> here &mdash; it is parsed
+      locally on your machine and never leaves it. For a single chat instantly, use the
+      <b>thinktank browser extension</b> instead.
+    </p>
+    <div class="import-grid">
+      <div class="drop" id="drop">
+        <input type="file" id="file" accept=".zip,.json,application/zip,application/json" hidden />
+        <div class="big">Drop your export here</div>
+        <div class="sub">a .zip (with conversations.json inside) or a conversations.json file &middot; or click to browse</div>
+        <div class="fname hidden" id="fname"></div>
+      </div>
+      <div class="or">&mdash; or paste JSON &mdash;</div>
+      <div class="field">
+        <label for="paste">Paste export JSON</label>
+        <textarea id="paste" placeholder="Paste the contents of conversations.json (an array of conversations)"></textarea>
+      </div>
+      <div class="field">
+        <label for="proj">Project name</label>
+        <input type="text" id="proj" value="web" />
+      </div>
+      <div class="import-actions">
+        <button class="btn primary" id="doimport">Import</button>
+        <span id="imp-status" class="or" style="text-align:left"></span>
+      </div>
+      <div class="import-result hidden" id="imp-result"></div>
     </div>
   </section>
 </div>
@@ -350,6 +413,7 @@ export const DASHBOARD_HTML = `<!doctype html>
     }
     el("tab-memories").className = name === "memories" ? "" : "hidden";
     el("tab-contradictions").className = name === "contradictions" ? "" : "hidden";
+    el("tab-import").className = name === "import" ? "" : "hidden";
     if (name === "contradictions") loadContradictions();
   }
   var tabBtns = document.querySelectorAll(".tab");
@@ -380,6 +444,101 @@ export const DASHBOARD_HTML = `<!doctype html>
       o.value = KINDS[i]; o.textContent = KINDS[i];
       sel.appendChild(o);
     }
+  })();
+
+  // --- import wiring ---
+  var importFile = null;
+  function setFile(f) {
+    importFile = f || null;
+    var fn = el("fname");
+    if (importFile) {
+      fn.textContent = "Selected: " + importFile.name + " (" + Math.max(1, Math.round(importFile.size / 1024)) + " KB)";
+      fn.className = "fname";
+    } else {
+      fn.textContent = "";
+      fn.className = "fname hidden";
+    }
+  }
+  function sCard(n, label) {
+    return '<div class="s"><div class="n">' + (n == null ? "-" : n) + '</div><div class="l">' + label + "</div></div>";
+  }
+  function showImportResult(ok, html) {
+    var box = el("imp-result");
+    box.className = "import-result " + (ok ? "ok" : "err");
+    box.innerHTML = html;
+  }
+  function doImport() {
+    var btn = el("doimport");
+    var status = el("imp-status");
+    var paste = el("paste").value.trim();
+    var project = el("proj").value.trim() || "web";
+    if (!importFile && !paste) {
+      showImportResult(false, "<h3>Nothing to import</h3><div>Choose a .zip / .json file or paste JSON first.</div>");
+      return;
+    }
+    var fd = new FormData();
+    fd.append("project", project);
+    if (importFile) fd.append("file", importFile);
+    else fd.append("json", paste);
+
+    btn.disabled = true;
+    status.textContent = "Importing... parsing + embedding can take a moment.";
+    el("imp-result").className = "import-result hidden";
+
+    fetch("/api/import", { method: "POST", body: fd })
+      .then(function (r) {
+        return r.json().then(
+          function (j) { return { status: r.status, body: j }; },
+          function () { return { status: r.status, body: { ok: false, error: "Server returned a non-JSON response (HTTP " + r.status + ")." } }; }
+        );
+      })
+      .then(function (res) {
+        var j = res.body || {};
+        if (!j.ok) {
+          showImportResult(false, "<h3>Import failed</h3><div>" + esc(j.error || ("HTTP " + res.status)) + "</div>");
+          return;
+        }
+        var cards =
+          sCard(j.conversations, "conversations") +
+          sCard(j.turns, "turns") +
+          sCard(j.candidates, "candidates") +
+          sCard(j.inserted, "new") +
+          sCard(j.merged, "merged") +
+          sCard(j.superseded, "updated") +
+          sCard(j.contradictions, "conflicts");
+        showImportResult(true,
+          "<h3>Imported " + esc(j.source) + " export &middot; project &ldquo;" + esc(j.project) + "&rdquo; &middot; via " + esc(j.input) + "</h3>" +
+          '<div class="sumgrid">' + cards + "</div>");
+        setFile(null);
+        el("file").value = "";
+        el("paste").value = "";
+        loadStats();
+        loadMemories();
+      })
+      .catch(function (e) {
+        showImportResult(false, "<h3>Import failed</h3><div>" + esc(String(e)) + "</div>");
+      })
+      .then(function () {
+        btn.disabled = false;
+        status.textContent = "";
+      });
+  }
+  (function () {
+    var drop = el("drop");
+    var fileInput = el("file");
+    if (!drop || !fileInput) return;
+    drop.onclick = function () { fileInput.click(); };
+    fileInput.onchange = function () { setFile(fileInput.files && fileInput.files[0]); };
+    drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.className = "drop drag"; });
+    drop.addEventListener("dragleave", function () { drop.className = "drop"; });
+    drop.addEventListener("drop", function (e) {
+      e.preventDefault();
+      drop.className = "drop";
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        setFile(e.dataTransfer.files[0]);
+      }
+    });
+    el("doimport").onclick = doImport;
   })();
 
   loadStats().then(loadProjects).then(loadMemories);

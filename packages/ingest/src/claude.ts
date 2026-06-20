@@ -44,10 +44,16 @@ function isoToMs(v: unknown): number | null {
 /**
  * Extract plain text from a Claude message. Prefers a structured `content`
  * array (joining `type: 'text'` blocks) and falls back to the flattened `text`
- * field. Tool calls, thinking blocks, and attachments are ignored.
+ * field, then appends any server-extracted attachment text
+ * (`attachments[].extracted_content`, e.g. uploaded PDFs/docs/code). Tool calls
+ * and thinking blocks are skipped.
  */
 function messageText(message: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  // Body text: structured content array (preferred), else flattened `text`.
   const content = message['content'];
+  let body = '';
   if (Array.isArray(content)) {
     const pieces: string[] = [];
     for (const block of content) {
@@ -57,10 +63,23 @@ function messageText(message: Record<string, unknown>): string {
       const t = asString(block['text']);
       if (t && t.trim()) pieces.push(t);
     }
-    const joined = pieces.join('\n').trim();
-    if (joined) return joined;
+    body = pieces.join('\n').trim();
   }
-  return (asString(message['text']) ?? '').trim();
+  if (!body) body = (asString(message['text']) ?? '').trim();
+  if (body) parts.push(body);
+
+  // Attachment text extracted by Claude (uploaded files). This rescues messages
+  // whose only content was an attachment, and enriches ones that had both.
+  const attachments = message['attachments'];
+  if (Array.isArray(attachments)) {
+    for (const att of attachments) {
+      if (!isRecord(att)) continue;
+      const extracted = asString(att['extracted_content']);
+      if (extracted && extracted.trim()) parts.push(extracted.trim());
+    }
+  }
+
+  return parts.join('\n').trim();
 }
 
 function mapRole(sender: string | null): MemoryEvent['role'] {
@@ -76,7 +95,8 @@ function parseConversation(
   convo: Record<string, unknown>,
   opts: ParseOptions,
 ): ParsedConversation {
-  const title = asString(convo['name']);
+  // Fall back to the conversation `summary` when it has no `name` (recall).
+  const title = asString(convo['name']) || asString(convo['summary']) || null;
   const createdAt = isoToMs(convo['created_at']);
   const messages = Array.isArray(convo['chat_messages']) ? convo['chat_messages'] : [];
 

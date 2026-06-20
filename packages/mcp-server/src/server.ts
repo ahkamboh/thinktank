@@ -13,6 +13,24 @@ import {
 export const SERVER_NAME = 'thinktank';
 export const SERVER_VERSION = '0.0.0';
 
+/**
+ * Server-level auto-use policy. The MCP SDK surfaces this `instructions` string
+ * to the client during initialize, so any client (Cursor, Claude Code, Codex,
+ * ...) gets the behavior even with no rules file installed. This is the
+ * universal, file-free half of auto-use; the setup command's rule files are the
+ * stronger, client-specific reinforcement.
+ */
+export const SERVER_INSTRUCTIONS = [
+  'thinktank is the shared, persistent memory for this user across all their AI tools.',
+  'Use these tools PROACTIVELY, without being asked:',
+  '1. At the START of every session/task, call memory_resume for the active project to load prior context so you do not ask the user to repeat themselves.',
+  "2. BEFORE answering anything about past decisions, preferences, setup, or architecture (\"what did we choose/use/decide\"), call memory_search FIRST and prefer stored answers over guessing.",
+  '3. When the user states a durable decision, preference, constraint, or fact, call memory_save WITHOUT being asked.',
+  'Never store chit-chat, transient one-off requests, or secrets (API keys, tokens, passwords, credentialed URLs).',
+  'project = the repo/folder name being worked in.',
+  'The user can also type "tank" or "thinktank" to explicitly ask you to check memory.',
+].join('\n');
+
 const KIND_VALUES = [
   'decision',
   'fact',
@@ -48,7 +66,10 @@ function summarizeIngest(results: IngestResult[]): string {
  * or a Streamable HTTP transport.
  */
 export function createServer(): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
+  const server = new McpServer(
+    { name: SERVER_NAME, version: SERVER_VERSION },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
 
   // ---- memory_resume -----------------------------------------------------
   server.registerTool(
@@ -56,10 +77,11 @@ export function createServer(): McpServer {
     {
       title: 'Resume project memory',
       description:
-        'Call this at the START of a session/conversation. Returns a small, ' +
-        'token-budgeted set of the most important things already known about ' +
-        'a project (decisions, constraints, preferences) so you do not ask the ' +
-        'user to repeat themselves.',
+        'Call at the START of every session/task to load the user\'s prior ' +
+        'context BEFORE doing substantive work. Returns a small, token-budgeted ' +
+        'set of the most important things already known about a project ' +
+        '(decisions, constraints, preferences) so you never ask the user to ' +
+        'repeat themselves. Do this automatically without being asked.',
       inputSchema: {
         project: z
           .string()
@@ -100,9 +122,11 @@ export function createServer(): McpServer {
     {
       title: 'Search memory',
       description:
-        'Semantic + keyword search over stored memories. Use when you need ' +
-        'specific prior context (a past decision, a constraint, a snippet). ' +
-        'Returns active memories only, packed to a token budget.',
+        "Call this FIRST before answering any question about prior decisions, " +
+        "preferences, setup, or \"what did we choose/use/decide\". Prefer stored " +
+        'answers over guessing. Semantic + keyword search over stored memories ' +
+        '(a past decision, a constraint, a snippet). Returns active memories ' +
+        'only, packed to a token budget.',
       inputSchema: {
         query: z.string().describe('What you want to recall.'),
         project: z.string().optional().describe('Restrict to this project.'),
@@ -131,9 +155,11 @@ export function createServer(): McpServer {
     {
       title: 'Save to memory',
       description:
-        'Persist something durable (a decision, constraint, preference, fact, ' +
-        'state, or code) so other tools/sessions remember it. Runs through the ' +
-        'merge engine: duplicates are merged and conflicts supersede older info.',
+        'Call automatically whenever the user states something durable to ' +
+        'remember (a decision, constraint, preference, fact, state, or code) — ' +
+        'do not wait to be asked. Persists it so other tools/sessions remember ' +
+        'it; runs through the merge engine (duplicates merge, conflicts ' +
+        'supersede older info). Never save chit-chat or secrets.',
       inputSchema: {
         text: z.string().describe('The thing to remember.'),
         project: z.string().optional().describe('Project / repo scope.'),
