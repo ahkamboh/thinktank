@@ -7,6 +7,12 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs';
+import {
+  SECTION_BEGIN,
+  SECTION_END,
+  cursorRuleFile,
+  delimitedSection,
+} from './auto-use-text.js';
 
 export type Agent = 'cursor' | 'claude' | 'codex';
 
@@ -53,11 +59,33 @@ function mergeMcpServersJson(path: string, inv: McpInvocation): void {
   writeJson(path, cfg);
 }
 
+/** Outcome of writing the behavioral auto-use rule for a client. */
+export type RuleStatus = 'created' | 'updated' | 'unchanged' | 'appended';
+
+export interface RuleResult {
+  /** Absolute path of the rule/instructions file that was touched. */
+  path: string;
+  /** What happened: created new, updated in place, appended, or no change. */
+  status: RuleStatus;
+}
+
 export interface SetupResult {
   agent: Agent;
   path: string;
   snippet: string;
   verify: string;
+  /** Present when the auto-use behavioral rule was installed (not --no-rules). */
+  rule?: RuleResult;
+}
+
+export interface SetupOptions {
+  /** Install the behavioral auto-use rule too. Default: true. */
+  installRules?: boolean;
+  /**
+   * Directory the Cursor project rule is written into (its `.cursor/rules/`).
+   * Defaults to the process CWD so it applies to the repo setup is run in.
+   */
+  cwd?: string;
 }
 
 const CODEX_MARKER = '[mcp_servers.thinktank]';
@@ -67,8 +95,8 @@ function tomlValue(inv: McpInvocation): string {
   return `${CODEX_MARKER}\ncommand = ${JSON.stringify(inv.command)}\nargs = [${args}]\n`;
 }
 
-/** Wire thinktank into one agent. Returns what was written + how to verify. */
-export function setupAgent(agent: Agent): SetupResult {
+/** Write only the MCP server connection for one agent (no behavioral rule). */
+function writeMcpConfig(agent: Agent): SetupResult {
   const inv = mcpInvocation();
   const home = homedir();
 
@@ -126,4 +154,78 @@ export function setupAgent(agent: Agent): SetupResult {
       'Restart Codex. Run `codex` and check that the "thinktank" MCP server ' +
       'connects (it will expose the memory_* tools).',
   };
+}
+
+/**
+ * Write a fully-managed file idempotently (thinktank owns the whole file).
+ * Returns whether it was created, updated (content changed), or left unchanged.
+ */
+function writeManagedFile(path: string, content: string): RuleStatus {
+  if (existsSync(path)) {
+    if (readFileSync(path, 'utf8') === content) return 'unchanged';
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, content, 'utf8');
+    return 'updated';
+  }
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, content, 'utf8');
+  return 'created';
+}
+
+/**
+ * Insert or replace thinktank's delimited managed section inside an
+ * append-only file (CLAUDE.md / AGENTS.md), preserving everything else the
+ * user has written. If the section already exists it is replaced in place
+ * (idempotent, no duplication); otherwise it is appended.
+ */
+function upsertDelimitedSection(path: string, section: string): RuleStatus {
+  if (!existsSync(path)) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, section, 'utf8');
+    return 'created';
+  }
+  const current = readFileSync(path, 'utf8');
+  const begin = current.indexOf(SECTION_BEGIN);
+  const end = begin === -1 ? -1 : current.indexOf(SECTION_END, begin);
+  if (begin !== -1 && end !== -1) {
+    const after = end + SECTION_END.length;
+    const replaced = current.slice(0, begin) + section.trimEnd() + current.slice(after);
+    if (replaced === current) return 'unchanged';
+    writeFileSync(path, replaced, 'utf8');
+    return 'updated';
+  }
+  // No managed section yet - append one, separated from existing content.
+  const sep = current.length === 0 ? '' : current.endsWith('\n') ? '\n' : '\n\n';
+  writeFileSync(path, current + sep + section, 'utf8');
+  return 'appended';
+}
+
+/** Install the behavioral auto-use rule for one agent. */
+function installRule(agent: Agent, cwd: string): RuleResult {
+  if (agent === 'cursor') {
+    // Project-scoped: applies to the repo `setup` was run in.
+    const path = join(cwd, '.cursor', 'rules', 'thinktank-memory.mdc');
+    return { path, status: writeManagedFile(path, cursorRuleFile()) };
+  }
+  if (agent === 'claude') {
+    // User-scoped, matching where Claude Code reads global guidance.
+    const path = join(homedir(), '.claude', 'CLAUDE.md');
+    return { path, status: upsertDelimitedSection(path, delimitedSection('claude-code')) };
+  }
+  // codex - user-scoped AGENTS.md, alongside ~/.codex/config.toml.
+  const path = join(homedir(), '.codex', 'AGENTS.md');
+  return { path, status: upsertDelimitedSection(path, delimitedSection('codex')) };
+}
+
+/**
+ * Wire thinktank into one agent: write the MCP server connection and (unless
+ * disabled) install the behavioral auto-use rule so the agent calls the memory
+ * tools automatically. Both steps are idempotent and non-clobbering.
+ */
+export function setupAgent(agent: Agent, opts: SetupOptions = {}): SetupResult {
+  const result = writeMcpConfig(agent);
+  if (opts.installRules !== false) {
+    result.rule = installRule(agent, opts.cwd ?? process.cwd());
+  }
+  return result;
 }
