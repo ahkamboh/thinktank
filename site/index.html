@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>thinktank — One memory. Every AI.</title>
+<meta name="description" content="A local-first universal memory layer. thinktank connects Claude, ChatGPT, Cursor, and Codex into a single private brain — local-first, no cloud, no account." />
+<meta property="og:title" content="thinktank — One memory. Every AI." />
+<meta property="og:description" content="One private brain for every AI. Capture once locally; every agent you use remembers. No cloud, no account, no API keys." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://thinktank.sh" />
+<meta property="og:image" content="https://thinktank.sh/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="thinktank — one memory, every AI" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="thinktank — One memory. Every AI." />
+<meta name="twitter:description" content="One private brain for every AI. Local-first, no cloud, no account." />
+<meta name="twitter:image" content="https://thinktank.sh/og.png" />
+<meta name="theme-color" content="#efe7d6" />
+<link rel="icon" href="assets/logo/thinktank-mark.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<noscript><style>.reveal{opacity:1!important;transform:none!important}</style></noscript>
+<style>
+  :root{
+    --bg:#efe7d6; --bg2:#e7ddca; --paper:#f6f0e3; --card:#f4eddf;
+    --ink:#1c1813; --ink-2:#3c352c; --ink-soft:#6b6256; --line:#d8cdb6; --line-strong:#c2b599;
+    --accent:#FF3D00; --accent-deep:#b32a00; --accent-soft:#ffe5dc;
+    --good:#7fae74; --neg:#a4513c;
+    --r-sm:8px; --r:12px; --r-lg:22px; --maxw:1140px;
+    --serif:"Fraunces",Georgia,serif; --sans:"Hanken Grotesk",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-size:17px; line-height:1.6; font-weight:400;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+    background-image:radial-gradient(var(--line-strong) 1px, transparent 1px);
+    background-size:26px 26px; background-position:-13px -13px;
+  }
+  .grain{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.4;mix-blend-mode:multiply}
+  ::selection{background:var(--accent);color:#fff}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px;position:relative;z-index:2}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.02;letter-spacing:-0.02em}
+  .eyebrow{display:block;font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-deep)}
+  .muted{color:var(--ink-soft)}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);
+      background:color-mix(in srgb, var(--bg) 82%, transparent);border-bottom:1px solid transparent;transition:border-color .3s}
+  nav.scrolled{border-color:var(--line)}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:70px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:600;font-size:21px;letter-spacing:-.02em}
+  .brand svg{width:27px;height:27px;color:var(--accent);flex:none}
+  .nav-right{display:flex;align-items:center;gap:28px}
+  .nav-link{font-size:15px;color:var(--ink-2);font-weight:500;transition:color .2s}
+  .nav-link:hover{color:var(--accent-deep)}
+  .nav-cta{display:inline-flex;align-items:center;gap:7px;background:transparent;color:var(--ink);white-space:nowrap;
+    padding:9px 16px;border:1px solid var(--line-strong);border-radius:var(--r-sm);font-size:14.5px;font-weight:600;transition:transform .15s, background .2s, color .2s, border-color .2s}
+  .nav-cta:hover{transform:translateY(-1px);background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .nav-menu{display:none;position:relative}
+  .nav-menu summary{list-style:none;cursor:pointer;width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:var(--r-sm)}
+  .nav-menu summary::-webkit-details-marker{display:none}
+  .nav-panel{position:absolute;right:0;top:48px;background:var(--paper);border:1px solid var(--line-strong);border-radius:var(--r);padding:8px;display:flex;flex-direction:column;gap:2px;min-width:178px;box-shadow:0 20px 40px -24px rgba(28,24,19,.5);z-index:60}
+  .nav-panel a{padding:10px 12px;border-radius:var(--r-sm);font-size:15px;color:var(--ink-2)}
+  .nav-panel a:hover{background:var(--bg2);color:var(--accent-deep)}
+  .nav-panel a.nav-panel-cta{display:none;margin-top:6px;background:var(--accent);color:#fff;text-align:center;font-weight:600}
+  .nav-panel a.nav-panel-cta:hover{background:var(--accent-deep);color:#fff}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:16px;
+    border-radius:var(--r);padding:14px 24px;cursor:pointer;border:1px solid transparent;transition:transform .15s, box-shadow .2s, background .2s, border-color .2s;font-family:var(--sans)}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 1px 0 var(--accent-deep), 0 12px 30px -12px var(--accent)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 1px 0 var(--accent-deep), 0 18px 40px -14px var(--accent)}
+  .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+  .btn-ghost:hover{border-color:var(--ink);transform:translateY(-2px)}
+
+  /* hero */
+  .hero{position:relative;padding:84px 0 64px;overflow:hidden}
+  #ascii{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}
+  .hero-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(100deg, var(--bg) 0%, color-mix(in srgb,var(--bg) 80%,transparent) 30%, color-mix(in srgb,var(--bg) 58%,transparent) 60%, color-mix(in srgb,var(--bg) 52%,transparent) 100%)}
+  .hero .wrap{position:relative;z-index:2}
+  .hero-content{max-width:600px}
+  .hero-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:22px;z-index:2;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);opacity:.85}
+  .hero-grid{display:grid;grid-template-columns:0.9fr 1.1fr;gap:40px;align-items:center}
+  .hero h1{font-size:clamp(44px,6.4vw,82px);margin:18px 0 0}
+  .hero h1 em{font-style:italic;font-weight:500;color:var(--accent)}
+  .hero .sub{font-size:clamp(17px,1.4vw,20px);color:var(--ink-2);max-width:33ch;margin-top:22px;line-height:1.5}
+  .hero .sub b{font-weight:600;color:var(--ink)}
+  .waitlist{margin-top:30px;max-width:440px}
+  .wl-form{display:flex;gap:9px;background:var(--paper);border:1px solid var(--line-strong);border-radius:14px;padding:7px;box-shadow:0 18px 40px -28px rgba(28,24,19,.5)}
+  .wl-form input{flex:1;border:0;background:transparent;font-family:var(--sans);font-size:15.5px;color:var(--ink);padding:0 12px;outline:none}
+  .wl-form input::placeholder{color:var(--ink-soft)}
+  .wl-form .btn{padding:12px 20px;border-radius:var(--r-sm);font-size:15px;white-space:nowrap}
+  .wl-note{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .wl-note .dot{width:6px;height:6px;border-radius:50%;background:#4e7d43}
+  .wl-ok{display:none;margin-top:14px;font-size:15px;color:var(--accent-deep);font-weight:600}
+  .wl-ok.show{display:flex;align-items:center;gap:8px}
+  .wl-err{display:none;margin-top:12px;font-size:14.5px;color:var(--neg);font-weight:600}
+  .wl-err.show{display:block}
+
+  /* hero diagram */
+  .stage{position:relative;width:100%;aspect-ratio:1/.94}
+  .stage canvas{position:absolute;inset:0;width:100%;height:100%;z-index:2}
+  .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(104px,15vw,128px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;z-index:4;background:radial-gradient(circle at 50% 38%, rgba(255,61,0,.30), #1a140f 72%);border:1px solid rgba(255,61,0,.45);box-shadow:0 0 0 1px rgba(255,61,0,.15), 0 0 56px -6px rgba(255,61,0,.55);animation:hubBeat 3.4s ease-in-out infinite}
+  @keyframes hubBeat{0%,100%{box-shadow:0 0 0 1px rgba(255,61,0,.15),0 0 46px -8px rgba(255,61,0,.45)}50%{box-shadow:0 0 0 1px rgba(255,61,0,.32),0 0 80px -2px rgba(255,61,0,.7)}}
+  .hub .hub-mark{width:56%;height:56%;display:grid;place-items:center}
+  .hub-label{position:absolute;left:50%;bottom:-26px;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent-deep);white-space:nowrap}
+  .node{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px;transition:filter .3s,opacity .3s}
+  .node .chip{width:clamp(54px,8vw,72px);aspect-ratio:1;border-radius:22%;display:grid;place-items:center;background:#1b1712;border:1px solid #2e261d;box-shadow:0 12px 28px -14px rgba(28,24,19,.55);transition:transform .28s cubic-bezier(.2,.7,.3,1),border-color .28s,box-shadow .28s}
+  .node .glyph{width:52%;height:52%;display:grid;place-items:center}
+  .node .glyph svg{width:100%;height:100%}
+  .node .name{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);transition:color .25s}
+  .node:hover .chip,.node.active .chip{transform:scale(1.09);border-color:var(--accent);box-shadow:0 14px 34px -12px rgba(255,61,0,.45)}
+  .node:hover .name,.node.active .name{color:var(--ink)}
+  .stage.dimmed .node:not(.active){opacity:.4;filter:saturate(.6)}
+  .mem{position:absolute;z-index:3;pointer-events:none;font-family:var(--mono);font-size:9.5px;color:var(--ink-2);padding:5px 9px;border-radius:9px;white-space:nowrap;background:var(--paper);border:1px solid var(--line-strong);box-shadow:0 12px 28px -16px rgba(28,24,19,.45);opacity:0;animation:memFloat 9s ease-in-out infinite}
+  .mem .k{color:var(--accent-deep)} .mem b{color:var(--ink);font-weight:600}
+  @keyframes memFloat{0%,100%{opacity:0;transform:translateY(8px)}12%,80%{opacity:1;transform:translateY(0)}}
+
+  /* sections */
+  section{position:relative;z-index:2}
+  .sec{padding:88px 0}
+  .sec-head{max-width:640px;margin-bottom:48px}
+  .sec-head h2{font-size:clamp(30px,3.6vw,46px);margin:10px 0 0}
+  .sec-head p{color:var(--ink-2);font-size:18px;margin-top:16px;line-height:1.5}
+  .center{margin-left:auto;margin-right:auto;text-align:center}
+  .center p{max-width:46ch;margin-left:auto;margin-right:auto}
+
+  /* proof terminal */
+  .proof{background:linear-gradient(180deg,transparent, color-mix(in srgb,var(--bg2) 60%, transparent));border-top:1px solid var(--line)}
+  .term{background:var(--term,#16130f);border-radius:var(--r-lg);overflow:hidden;box-shadow:0 40px 90px -40px rgba(20,16,12,.7), inset 0 1px 0 rgba(255,255,255,.04);border:1px solid #000}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:14px 18px;background:#211c16;border-bottom:1px solid #000}
+  .term-bar .b{width:11px;height:11px;border-radius:50%}
+  .term-bar .b1{background:#d8836f}.term-bar .b2{background:#d8b06f}.term-bar .b3{background:#84ae74}
+  .term-bar .t{margin-left:10px;font-family:var(--mono);font-size:12.5px;color:#a99f8c}
+  .term-body{padding:26px 26px 30px;font-family:var(--mono);font-size:14.5px;line-height:1.85;color:#ece4d3;min-height:330px}
+  .tl{opacity:0;transform:translateY(6px);animation:tlin .4s forwards}
+  .tl .day{color:#a99f8c}.tl .who{color:#9fb8ff}.tl .ok{color:#84ae74}.tl .warn{color:#d8a23f}
+  .tl .recall{color:#fff}.tl .accent{color:#ff7a52}.tl .mut{color:#a99f8c}
+  @keyframes tlin{to{opacity:1;transform:none}}
+
+  /* silos */
+  .silos{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:10px}
+  .silo{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 16px;text-align:center}
+  .silo .ic{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:10px;letter-spacing:.05em}
+  .silo .nm{font-weight:600;font-size:15px}
+  .silo .lk{margin-top:9px;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft)}
+  .vs{font-family:var(--serif);font-style:italic;font-size:22px;color:var(--ink-soft);text-align:center;margin:28px 0 0}
+
+  /* pipeline */
+  .pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:14px;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--paper)}
+  .step{padding:26px 22px;border-right:1px solid var(--line)}
+  .step:last-child{border-right:0}
+  .step .n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:500}
+  .step h3{font-size:19px;margin:12px 0 8px}
+  .step p{font-size:14px;color:var(--ink-soft);line-height:1.5}
+
+  /* features */
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;transition:transform .2s, border-color .2s, box-shadow .2s}
+  .feat:hover{transform:translateY(-4px);border-color:var(--line-strong);box-shadow:0 24px 50px -34px rgba(28,24,19,.5)}
+  .feat .fi{width:42px;height:42px;border-radius:var(--r);display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-deep);margin-bottom:18px}
+  .feat .fi svg{width:21px;height:21px}
+  .feat h3{font-size:20px;margin-bottom:9px}
+  .feat p{font-size:15px;color:var(--ink-soft);line-height:1.55}
+
+  /* pricing */
+  .prices{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+  .price{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:30px;display:flex;flex-direction:column}
+  .price.feature{background:var(--ink);color:var(--paper);border-color:var(--ink);box-shadow:0 30px 60px -34px rgba(28,24,19,.6);outline:1px solid var(--accent-deep);outline-offset:-1px}
+  .price .pn{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-deep)}
+  .price.feature .pn{color:#ff7a52}
+  .price .amt{font-family:var(--serif);font-size:46px;font-weight:600;margin:14px 0 2px;letter-spacing:-.02em}
+  .price .per{font-size:14px;color:var(--ink-soft)}
+  .price.feature .per{color:#bdb3a2}
+  .price ul{list-style:none;margin:20px 0 26px;display:flex;flex-direction:column;gap:11px}
+  .price li{font-size:14.5px;display:flex;gap:10px;align-items:flex-start;line-height:1.4}
+  .price li svg{width:16px;height:16px;flex:none;margin-top:3px;color:var(--accent)}
+  .price.feature li svg{color:#ff7a52}
+  .price .btn{margin-top:auto;width:100%}
+  .price.feature .btn-ghost{color:var(--paper);border-color:#4a443b}
+  .price.feature .btn-ghost:hover{border-color:var(--paper)}
+  .soon{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--line-strong);border-radius:999px;padding:1px 8px;margin-left:6px}
+  .price.feature .soon{color:#bdb3a2;border-color:#4a443b}
+
+  /* install */
+  .install{display:grid;grid-template-columns:.85fr 1.15fr;gap:48px;align-items:center}
+  .cmd{background:#16130f;border-radius:var(--r-lg);padding:24px 26px;font-family:var(--mono);font-size:14px;line-height:2;color:#ece4d3;box-shadow:0 30px 70px -44px rgba(20,16,12,.7);border:1px solid #000;overflow-x:auto}
+  .cmd .c{color:#a99f8c}.cmd .g{color:#84ae74}.cmd .a{color:#ff7a52}
+
+  /* final */
+  .final{text-align:center;padding:96px 0 80px}
+  .final h2{font-size:clamp(34px,5vw,60px);max-width:16ch;margin:18px auto 0}
+  .final .waitlist{margin:30px auto 0}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:46px 0;margin-top:10px}
+  .foot{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+  .foot .brand{font-size:18px}
+  .foot-links{display:flex;gap:26px;font-size:14.5px;color:var(--ink-2)}
+  .foot-links a:hover{color:var(--accent-deep)}
+  .foot .legal{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+
+  /* reveal */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .5s cubic-bezier(.2,.7,.2,1), transform .5s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  .feats .feat:nth-child(2),.silos .silo:nth-child(2),.prices .price:nth-child(2){transition-delay:.07s}
+  .feats .feat:nth-child(3),.silos .silo:nth-child(3),.prices .price:nth-child(3){transition-delay:.14s}
+  .feats .feat:nth-child(4),.silos .silo:nth-child(4){transition-delay:.21s}
+  .feats .feat:nth-child(5),.silos .silo:nth-child(5){transition-delay:.28s}
+  .feats .feat:nth-child(6){transition-delay:.35s}
+
+  /* responsive */
+  @media (max-width:920px){
+    .hero-grid{grid-template-columns:1fr;gap:30px}
+    .stage{max-width:420px;margin:0 auto}        /* copy first, animation below (no order flip) */
+    .mem{display:none}
+    .install{grid-template-columns:1fr;gap:28px}
+    .feats,.prices{grid-template-columns:1fr}
+    .pipe{grid-template-columns:1fr}
+    .step{border-right:0;border-bottom:1px solid var(--line)}
+    .step:last-child{border-bottom:0}
+    .silos{grid-template-columns:repeat(2,1fr)}
+    .nav-link.hide-sm{display:none}
+    .nav-menu{display:block}
+  }
+  @media (max-width:640px){
+    .sec-head{margin-bottom:34px}
+    .feats,.prices{gap:14px}
+    .hero .sub{max-width:none}
+  }
+  @media (max-width:560px){
+    .wrap{padding:0 20px}
+    .sec{padding:58px 0}
+    .hero{padding:46px 0 38px}
+    .hero h1{font-size:42px}
+    .hero-scrim{background:linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb,var(--bg) 62%,transparent) 50%, color-mix(in srgb,var(--bg) 55%,transparent) 100%)}
+    .wl-form{flex-direction:column}
+    .wl-form .btn{width:100%}
+    .silos{grid-template-columns:1fr 1fr}
+    .foot{flex-direction:column;align-items:flex-start;gap:16px}
+    .foot-links{flex-wrap:wrap;gap:12px 18px}
+    .term-body{font-size:13px;padding:20px 18px 22px;min-height:0;line-height:1.7}
+    .term-bar .t{font-size:11.5px}
+    .price{padding:26px 22px}
+    .feat{padding:24px 22px}
+    .cmd{font-size:12.5px;padding:20px 18px}
+    .final{padding:72px 0 64px}
+  }
+  @media (max-width:480px){
+    .nav-cta{display:none}
+    .nav-panel a.nav-panel-cta{display:block}
+    .nav-in{height:62px}
+    .hero h1{font-size:40px}
+    .stage{max-width:340px}
+    .hub{width:96px}
+    .node .chip{width:50px}
+    .node .name{font-size:11.5px}
+  }
+  @media (max-width:360px){
+    .wrap{padding:0 16px}
+    .hero h1{font-size:34px}
+    .hero .sub{font-size:15.5px}
+    .sec-head h2{font-size:26px}
+    .sec-head p{font-size:16px}
+    .silos{grid-template-columns:1fr}
+    .price .amt{font-size:40px}
+    .stage{max-width:280px}
+    .hub{width:86px}
+    .node .chip{width:46px}
+    .node .name{font-size:10.5px}
+  }
+  @media (max-width:320px){
+    .hero h1{font-size:30px}
+    .brand img{height:22px!important}
+    .nav-menu summary{width:36px;height:36px}
+    .term-body{font-size:12px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto!important}
+    .reveal{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+<svg class="grain" aria-hidden="true"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="1" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.06"/></svg>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" aria-label="thinktank home">
+      <img src="assets/logo/thinktank-lockup-ink.svg" alt="thinktank" style="height:26px;width:auto;display:block" />
+    </a>
+    <div class="nav-right">
+      <a href="#how" class="nav-link hide-sm">How it works</a>
+      <a href="#features" class="nav-link hide-sm">Features</a>
+      <a href="#pricing" class="nav-link hide-sm">Pricing</a>
+      <a href="https://github.com/ahkamboh/thinktank" class="nav-link hide-sm">GitHub</a>
+      <details class="nav-menu">
+        <summary aria-label="Open menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></summary>
+        <div class="nav-panel">
+          <a href="#how">How it works</a>
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="https://github.com/ahkamboh/thinktank">GitHub</a>
+          <a href="#waitlist" class="nav-panel-cta">Get early access</a>
+        </div>
+      </details>
+      <a href="#waitlist" class="nav-cta">Get early access <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <canvas id="ascii" aria-hidden="true"></canvas>
+  <div class="hero-scrim"></div>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Local-first memory for AI</span>
+      <h1>One memory.<br/><em>Every AI.</em></h1>
+      <p class="sub">Tell ChatGPT a decision today — <b>Cursor knows it tomorrow.</b> thinktank gives every AI you use one shared, private brain. No cloud. No account.</p>
+      <div class="waitlist" id="waitlist">
+        <form class="wl-form" id="wlform">
+          <input type="email" name="email" placeholder="you@company.com" required aria-label="Email address" autocomplete="email" inputmode="email" />
+          <button class="btn btn-primary" type="submit">Get early access</button>
+        </form>
+        <div class="wl-ok" id="wlok" role="status" aria-live="polite"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> You're on the list. We'll email you at launch.</div>
+        <div class="wl-err" id="wlerr" role="alert">Something went wrong — please try again.</div>
+        <div class="wl-note"><span class="dot"></span> Free &amp; open-source · local-first · <span class="muted">MIT licensed</span></div>
+      </div>
+    </div>
+
+    <!-- animated connection graph (right side) -->
+    <div class="stage" id="stage" aria-hidden="true">
+      <canvas id="wires"></canvas>
+      <div class="hub"><span class="hub-mark" id="ttHub"></span><span class="hub-label">thinktank</span></div>
+    </div>
+  </div>
+  <div class="hero-hint">move your cursor — watch the memory light up</div>
+</header>
+
+<!-- PROOF -->
+<section class="sec proof" id="proof">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">The proof</span>
+      <h2>Decide once. Every agent remembers.</h2>
+      <p>How a thinktank session plays out: a decision made in ChatGPT on Monday is recalled — semantically — by Cursor on Tuesday. Secrets are stripped before storage. A later, conflicting decision supersedes the old one.</p>
+    </div>
+    <div class="term reveal">
+      <div class="term-bar"><span class="b b1"></span><span class="b b2"></span><span class="b b3"></span><span class="t">~/.thinktank — one local brain</span></div>
+      <div class="term-body" id="termbody"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="sec" id="problem">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Why it matters</span>
+      <h2>Your AI memory is trapped in silos.</h2>
+      <p>Every tool has "memory" now — but it's locked inside that one tool. None of them talk to each other. You re-explain yourself all day.</p>
+    </div>
+    <div class="silos reveal">
+      <div class="silo"><div class="ic">cloud · claude only</div><div class="nm">Claude Projects</div><div class="lk">✕ isolated</div></div>
+      <div class="silo"><div class="ic">file · one project</div><div class="nm">CLAUDE.md</div><div class="lk">✕ isolated</div></div>
+      <div class="silo"><div class="ic">file · one project</div><div class="nm">.cursorrules</div><div class="lk">✕ isolated</div></div>
+      <div class="silo"><div class="ic">cloud · chatgpt only</div><div class="nm">ChatGPT Memory</div><div class="lk">✕ isolated</div></div>
+      <div class="silo"><div class="ic">sdk · you wire it</div><div class="nm">Memory SDKs</div><div class="lk">✕ dev work</div></div>
+    </div>
+    <div class="vs reveal">thinktank is the one brain that connects all of them.</div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="sec" id="how" style="background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--bg2) 55%,transparent))">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2>Capture once. Merged into one timeline.</h2>
+      <p>Raw chat goes in; clean, deduplicated, conflict-resolved memory comes out — and any agent can retrieve it.</p>
+    </div>
+    <div class="pipe reveal">
+      <div class="step"><div class="n">01</div><h3>Capture</h3><p>Coding agents write over MCP. Web chats import via a browser button or an export file — sent only to localhost.</p></div>
+      <div class="step"><div class="n">02</div><h3>Redact</h3><p>Every ingest path strips API keys, tokens, and credentials <b>before</b> anything is embedded or stored.</p></div>
+      <div class="step"><div class="n">03</div><h3>Merge</h3><p>Distilled into atomic memories — decision, fact, preference, constraint, state, code. Dupes removed, conflicts resolved.</p></div>
+      <div class="step"><div class="n">04</div><h3>Store</h3><p>One local SQLite file at <span style="font-family:var(--mono);font-size:12.5px">~/.thinktank</span>. Private by design.</p></div>
+      <div class="step"><div class="n">05</div><h3>Retrieve</h3><p>Hybrid semantic + keyword search returns a small, token-budgeted set. Signal, not 50k tokens of history.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Built right</span>
+      <h2>Private by default. Smart by design.</h2>
+    </div>
+    <div class="feats">
+      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5 3.4 7.6 8 10 4.6-2.4 8-5 8-10V6l-8-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Local-first &amp; private</h3><p>The extension and server talk to 127.0.0.1 only. No telemetry, no account. Optional AES-256-GCM encryption at rest.</p></div>
+      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><h3>Every tool, one brain</h3><p>Cursor, Claude Code, and Codex connect over MCP. ChatGPT and Claude.ai import via the browser button. New MCP tool? It just works.</p></div>
+      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/></svg></div><h3>Smart retrieval</h3><p>On-device embeddings (all-MiniLM-L6-v2) + vector KNN + keyword FTS. Agents get a tight, token-budgeted slice — not your whole history.</p></div>
+      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>No native build step</h3><p>Built on Node's <span style="font-family:var(--mono);font-size:12.5px">node:sqlite</span> + sqlite-vec. No compilation, no C++ toolchain. Runs out of the box.</p></div>
+      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><h3>Merge, not pile</h3><p>Conflicts resolve automatically — newest wins, older is marked superseded and logged. One clean timeline, not a junk drawer.</p></div>
+      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Secrets never leak</h3><p>API keys, AWS keys, private keys, credentialed URLs, and KEY=secret pairs are redacted on every path before embedding or indexing.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="sec" id="pricing" style="background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--bg2) 55%,transparent))">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Pricing</span>
+      <h2>Free where it lives. Paid where it syncs.</h2>
+      <p>The local engine is free forever and open-source (MIT). Pro and Teams add a hosted, encrypted sync layer.</p>
+    </div>
+    <div class="prices">
+      <div class="price reveal">
+        <div class="pn">Free</div>
+        <div class="amt">$0</div><div class="per">forever · local</div>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited local memory</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> All tools connected</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Open source (MIT)</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Secret redaction + optional encryption</li>
+        </ul>
+        <a href="https://github.com/ahkamboh/thinktank" class="btn btn-ghost">View on GitHub</a>
+      </div>
+      <div class="price feature reveal">
+        <div class="pn">Pro <span class="soon">soon</span></div>
+        <div class="amt">$9</div><div class="per">per month</div>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Everything in Free</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Encrypted sync across devices</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Full memory search + history</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
+        </ul>
+        <a href="#waitlist" class="btn btn-primary">Get early access</a>
+      </div>
+      <div class="price reveal">
+        <div class="pn">Teams <span class="soon">soon</span></div>
+        <div class="amt">$19</div><div class="per">per user / month</div>
+        <ul>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Everything in Pro</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Shared team memory</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Access controls</li>
+          <li><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> SSO &amp; audit log</li>
+        </ul>
+        <a href="#waitlist" class="btn btn-ghost">Get early access</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="sec" id="install">
+  <div class="wrap install">
+    <div class="reveal">
+      <span class="eyebrow">Quick start</span>
+      <h2 style="font-size:clamp(28px,3.4vw,42px);margin-top:10px">Install in seconds. Every agent wired.</h2>
+      <p class="muted" style="margin-top:16px;font-size:17px">At launch, thinktank is a single <span style="font-family:var(--mono);font-size:13px">npx</span> away — point it at your agents, then run the local server for the browser button. Building from source today? It's three commands from the repo.</p>
+    </div>
+    <div class="cmd reveal">
+      <div><span class="c"># point thinktank at your agents</span></div>
+      <div><span class="g">$</span> npx @thinktank/cli setup <span class="a">--cursor --claude --codex</span></div>
+      <div style="height:10px"></div>
+      <div><span class="c"># run the local server for the browser button</span></div>
+      <div><span class="g">$</span> npx @thinktank/cli serve <span class="a">--http</span>  <span class="c">→ localhost:4319</span></div>
+      <div style="height:10px"></div>
+      <div><span class="c"># building from source today?</span></div>
+      <div><span class="c"># → github.com/ahkamboh/thinktank</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final" id="cta">
+  <div class="wrap">
+    <span class="eyebrow reveal">Stop repeating yourself</span>
+    <h2 class="reveal">Stop re-explaining yourself to every AI.</h2>
+    <div class="waitlist reveal">
+      <form class="wl-form" id="wlform2">
+        <input type="email" name="email" placeholder="you@company.com" required aria-label="Email address" autocomplete="email" inputmode="email" />
+        <button class="btn btn-primary" type="submit">Get early access</button>
+      </form>
+      <div class="wl-ok" id="wlok2" role="status" aria-live="polite"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> You're on the list. We'll email you at launch.</div>
+      <div class="wl-err" id="wlerr2" role="alert">Something went wrong — please try again.</div>
+      <div class="wl-note" style="justify-content:center"><span class="dot"></span> No spam. One email when thinktank launches.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top" aria-label="thinktank">
+      <img src="assets/logo/thinktank-lockup-ink.svg" alt="thinktank" style="height:24px;width:auto;display:block" />
+    </a>
+    <div class="foot-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/ahkamboh/thinktank">GitHub</a>
+    </div>
+    <div class="legal">MIT © ahkamboh · thinktank.sh</div>
+  </div>
+</footer>
+
+<script>
+  // ---------- live ASCII hero background (lights up ultramarine as the cursor moves) ----------
+  (function(){
+    const hero=document.getElementById('top');
+    const canvas=document.getElementById('ascii');
+    if(!canvas) return;
+    const ctx=canvas.getContext('2d',{alpha:false});
+    const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const RAMP=" .'`^\",:;-~=+ox*#%8@"; const RL=RAMP.length-1;
+    let W=0,H=0,cell=15,fs=16,cols=0,rows=0,dpr=1, mx=-9999,my=-9999,lx=0,ly=0,t=0,raf=0, hcx=0,hcy=0;
+    function hubCenter(){ const h=document.querySelector('.hub'); if(!h){ hcx=W*0.72; hcy=H*0.47; return; } const hr=h.getBoundingClientRect(), pr=hero.getBoundingClientRect(); hcx=hr.left-pr.left+hr.width/2; hcy=hr.top-pr.top+hr.height/2; }
+    function resize(){
+      dpr=Math.min(devicePixelRatio||1,2);
+      W=hero.clientWidth; H=hero.clientHeight;
+      cell = W<640?13:(W<1100?15:16); fs=cell+2;
+      canvas.width=Math.floor(W*dpr); canvas.height=Math.floor(H*dpr);
+      canvas.style.width=W+'px'; canvas.style.height=H+'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.font='600 '+fs+'px "JetBrains Mono", ui-monospace, monospace';
+      ctx.textBaseline='top';
+      cols=Math.ceil(W/cell)+1; rows=Math.ceil(H/cell)+1;
+      hubCenter(); lx=hcx; ly=hcy;
+    }
+    function cellColor(v,warm){
+      let a=v*0.12+warm*0.42; if(a>0.7)a=0.7;
+      const r=(28+227*warm)|0, g=(24+37*warm)|0, b=(19-19*warm)|0; // ink -> orange-red #FF3D00
+      return 'rgba('+r+','+g+','+b+','+a.toFixed(3)+')';
+    }
+    function render(){
+      raf=requestAnimationFrame(render); t+=0.016;
+      const tx=(mx>-9000)?mx:hcx, ty=(my>-9000)?my:hcy; // idle: perfectly centred behind the hub; moves only with the cursor
+      lx+=(tx-lx)*0.08; ly+=(ty-ly)*0.08;
+      const Rm=(W<640?160:260), Rm2=Rm*Rm;
+      ctx.fillStyle='#efe7d6'; ctx.fillRect(0,0,W,H);
+      for(let j=0;j<rows;j++){ const py=j*cell, fy=j*0.06;
+        for(let i=0;i<cols;i++){ const px=i*cell, fx=i*0.045;
+          let v=0.27+0.25*Math.sin(fx+t*0.55)*Math.cos(fy-t*0.4)+0.13*Math.sin((fx+fy)*0.85+t*0.8);
+          const dlx=px-lx,dly=py-ly,d2=dlx*dlx+dly*dly; const lite=Math.exp(-d2/Rm2);
+          v+=lite*1.05; if(v<=0.07) continue; if(v>1)v=1;
+          const ch=RAMP[(v*RL)|0]; if(ch===' ') continue;
+          ctx.fillStyle=cellColor(v, lite>1?1:lite); ctx.fillText(ch,px,py);
+        }}
+    }
+    function staticFrame(){
+      resize(); ctx.fillStyle='#efe7d6'; ctx.fillRect(0,0,W,H); lx=W*0.72; ly=H*0.46;
+      for(let j=0;j<rows;j++){ for(let i=0;i<cols;i++){ const px=i*cell,py=j*cell;
+        let v=0.3+0.24*Math.sin(i*0.05)*Math.cos(j*0.07);
+        const dlx=px-lx,dly=py-ly; const lite=Math.exp(-(dlx*dlx+dly*dly)/(240*240));
+        v+=lite*0.9; if(v<=0.07) continue; if(v>1)v=1; const ch=RAMP[(v*RL)|0]; if(ch===' ')continue;
+        ctx.fillStyle=cellColor(v,lite); ctx.fillText(ch,px,py);
+      }}
+    }
+    function start(){ if(reduce){ staticFrame(); return; } resize(); cancelAnimationFrame(raf); raf=requestAnimationFrame(render); }
+    hero.addEventListener('pointermove',e=>{ const r=hero.getBoundingClientRect(); mx=e.clientX-r.left; my=e.clientY-r.top; },{passive:true});
+    hero.addEventListener('pointerleave',()=>{ mx=-9999; my=-9999; });
+    let rt; addEventListener('resize',()=>{ clearTimeout(rt); rt=setTimeout(start,150); });
+    start();
+    if(document.fonts&&document.fonts.ready) document.fonts.ready.then(start);
+  })();
+
+  // ---- animated connection graph: 5 tools w/ real logos, hub fire→broadcast pulse cycle ----
+  (function(){
+    const stage=document.getElementById("stage"); if(!stage) return;
+    const canvas=document.getElementById("wires"); const ctx=canvas.getContext("2d");
+    const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let _g=0;
+    const TOOLS=[
+      {name:"Cursor",color:"#D6D8DF",glyph:c=>`<svg viewBox="0 0 512 512" fill="none"><path d="m415.035 156.35-151.503-87.4695c-4.865-2.8094-10.868-2.8094-15.733 0l-151.4969 87.4695c-4.0897 2.362-6.6146 6.729-6.6146 11.459v176.383c0 4.73 2.5249 9.097 6.6146 11.458l151.5039 87.47c4.865 2.809 10.868 2.809 15.733 0l151.504-87.47c4.089-2.361 6.614-6.728 6.614-11.458v-176.383c0-4.73-2.525-9.097-6.614-11.459zm-9.516 18.528-146.255 253.32c-.988 1.707-3.599 1.01-3.599-.967v-165.872c0-3.314-1.771-6.379-4.644-8.044l-143.645-82.932c-1.707-.988-1.01-3.599.968-3.599h292.509c4.154 0 6.75 4.503 4.673 8.101h-.007z" fill="${c}"/></svg>`},
+      {name:"Claude",color:"#D97757",glyph:c=>`<svg viewBox="0 0 248 248" fill="none"><path d="M52.4285 162.873L98.7844 136.879L99.5485 134.602L98.7844 133.334H96.4921L88.7237 132.862L62.2346 132.153L39.3113 131.207L17.0249 130.026L11.4214 128.844L6.2 121.873L6.7094 118.447L11.4214 115.257L18.171 115.847L33.0711 116.911L55.485 118.447L71.6586 119.392L95.728 121.873H99.5485L100.058 120.337L98.7844 119.392L97.7656 118.447L74.5877 102.732L49.4995 86.1905L36.3823 76.62L29.3779 71.7757L25.8121 67.2858L24.2839 57.3608L30.6515 50.2716L39.3113 50.8623L41.4763 51.4531L50.2636 58.1879L68.9842 72.7209L93.4357 90.6804L97.0015 93.6343L98.4374 92.6652L98.6571 91.9801L97.0015 89.2625L83.757 65.2772L69.621 40.8192L63.2534 30.6579L61.5978 24.632C60.9565 22.1032 60.579 20.0111 60.579 17.4246L67.8381 7.49965L71.9133 6.19995L81.7193 7.49965L85.7946 11.0443L91.9074 24.9865L101.714 46.8451L116.996 76.62L121.453 85.4816L123.873 93.6343L124.764 96.1155H126.292V94.6976L127.566 77.9197L129.858 57.3608L132.15 30.8942L132.915 23.4505L136.608 14.4708L143.994 9.62643L149.725 12.344L154.437 19.0788L153.8 23.4505L150.998 41.6463L145.522 70.1215L141.957 89.2625H143.994L146.414 86.7813L156.093 74.0206L172.266 53.698L179.398 45.6635L187.803 36.802L193.152 32.5484H203.34L210.726 43.6549L207.415 55.1159L196.972 68.3492L188.312 79.5739L175.896 96.2095L168.191 109.585L168.882 110.689L170.738 110.53L198.755 104.504L213.91 101.787L231.994 98.7149L240.144 102.496L241.036 106.395L237.852 114.311L218.495 119.037L195.826 123.645L162.07 131.592L161.696 131.893L162.137 132.547L177.36 133.925L183.855 134.279H199.774L229.447 136.524L237.215 141.605L241.8 147.867L241.036 152.711L229.065 158.737L213.019 154.956L175.45 145.977L162.587 142.787H160.805V143.85L171.502 154.366L191.242 172.089L215.82 195.011L217.094 200.682L213.91 205.172L210.599 204.699L188.949 188.394L180.544 181.069L161.696 165.118H160.422V166.772L164.752 173.152L187.803 207.771L188.949 218.405L187.294 221.832L181.308 223.959L174.813 222.777L161.187 203.754L147.305 182.486L136.098 163.345L134.745 164.2L128.075 235.42L125.019 239.082L117.887 241.8L111.902 237.31L108.718 229.984L111.902 215.452L115.722 196.547L118.779 181.541L121.58 162.873L123.291 156.636L123.14 156.219L121.773 156.449L107.699 175.752L86.304 204.699L69.3663 222.777L65.291 224.431L58.2867 220.768L58.9235 214.27L62.8713 208.48L86.304 178.705L100.44 160.155L109.551 149.507L109.462 147.967L108.959 147.924L46.6977 188.512L35.6182 189.93L30.7788 185.44L31.4156 178.115L33.7079 175.752L52.4285 162.873Z" fill="${c}"/></svg>`},
+      {name:"ChatGPT",color:"#ECEDF1",glyph:c=>`<svg viewBox="0 0 24 24" fill="none"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.1419.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997z" fill="${c}"/></svg>`},
+      {name:"Gemini",color:"#5C84D8",glyph:c=>{const g="hg"+(_g++);return`<svg viewBox="0 0 28 28" fill="none"><defs><radialGradient id="${g}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(2.77876 11.3795) rotate(18.6832) scale(29.8025 238.737)"><stop offset="0.067" stop-color="#9168C0"/><stop offset="0.343" stop-color="#5684D1"/><stop offset="0.672" stop-color="#1BA1E3"/></radialGradient></defs><path d="M14 28C14 26.0633 13.6267 24.2433 12.88 22.54C12.1567 20.8367 11.165 19.355 9.905 18.095C8.645 16.835 7.16333 15.8433 5.46 15.12C3.75667 14.3733 1.93667 14 0 14C1.93667 14 3.75667 13.6383 5.46 12.915C7.16333 12.1683 8.645 11.165 9.905 9.905C11.165 8.645 12.1567 7.16333 12.88 5.46C13.6267 3.75667 14 1.93667 14 0C14 1.93667 14.3617 3.75667 15.085 5.46C15.8317 7.16333 16.835 8.645 18.095 9.905C19.355 11.165 20.8367 12.1683 22.54 12.915C24.2433 13.6383 26.0633 14 28 14C26.0633 14 24.2433 14.3733 22.54 15.12C20.8367 15.8433 19.355 16.835 18.095 18.095C16.835 19.355 15.8317 20.8367 15.085 22.54C14.3617 24.2433 14 26.0633 14 28Z" fill="url(#${g})"/></svg>`}},
+      {name:"Grok",color:"#ECEDF1",glyph:c=>`<svg viewBox="0 0 512 512" fill="none"><path d="M210.484 312.759L343.465 210.383C349.984 205.364 359.302 207.322 362.408 215.117C378.758 256.231 371.454 305.64 338.925 339.563C306.397 373.487 261.137 380.927 219.768 363.983L174.577 385.803C239.394 432.008 318.104 420.581 367.289 369.251C406.303 328.564 418.386 273.104 407.088 223.091L407.19 223.198C390.807 149.726 411.218 120.359 453.03 60.3072C454.02 58.8833 455.01 57.4595 456 56L400.978 113.382V113.204L210.45 312.794" fill="${c}"/><path d="M183.042 337.641C136.519 291.294 144.54 219.567 184.236 178.203C213.59 147.59 261.683 135.096 303.666 153.464L348.755 131.75C340.632 125.627 330.221 119.042 318.275 114.414C264.277 91.2407 199.63 102.774 155.735 148.516C113.513 192.549 100.236 260.254 123.036 318.027C140.069 361.206 112.148 391.748 84.0229 422.575C74.0561 433.503 64.0553 444.431 56 456L183.007 337.677" fill="${c}"/></svg>`},
+    ];
+    (function(){let s="";for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3,x=24+Math.cos(a)*17,y=24+Math.sin(a)*17;s+=`<line x1="24" y1="24" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#efe7d6" stroke-width="1.5" opacity="0.85"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" fill="#efe7d6"/>`;}
+      document.getElementById("ttHub").innerHTML=`<svg viewBox="0 0 48 48" fill="none">${s}<circle cx="24" cy="24" r="6" fill="#1a140f" stroke="#FF3D00" stroke-width="1.9"/><circle cx="24" cy="24" r="2.6" fill="#FF3D00"/></svg>`;})();
+
+    const TH={in:"#FF3D00",out:"#FF9A3D",wire:"#FF5A1E",tick:"#c2410c"};
+    let W=0,H=0,dpr=1,nodes=[],hub={x:0,y:0},activeIdx=-1; const pulses=[],rings=[];
+    const nodeEls=TOOLS.map((t,i)=>{const el=document.createElement("div");el.className="node";el.innerHTML=`<div class="chip"><span class="glyph">${t.glyph(t.color)}</span></div><span class="name">${t.name}</span>`;stage.appendChild(el);el.addEventListener("pointerenter",()=>{activeIdx=i;el.classList.add("active");stage.classList.add("dimmed");});el.addEventListener("pointerleave",()=>{activeIdx=-1;el.classList.remove("active");stage.classList.remove("dimmed");});return el;});
+    const memEls=[{h:`<span class="k">decision</span>&nbsp; use JWT, <b>not</b> sessions`,node:0,d:"0s"},{h:`<span class="k">pref</span>&nbsp; package manager → <b>pnpm</b>`,node:1,d:"3s"},{h:`<span class="k">context</span>&nbsp; prod DB is <b>read-only</b>`,node:4,d:"6s"},{h:`<span class="k">style</span>&nbsp; <b>tabs</b>, width 2`,node:2,d:"4.5s"}].map(c=>{const m=document.createElement("div");m.className="mem";m.style.animationDelay=c.d;m.innerHTML=c.h;stage.appendChild(m);return{el:m,node:c.node};});
+    function layout(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);hub={x:W/2,y:H/2};const R=Math.min(W,H)*0.40,off=-Math.PI/2-Math.PI/nodeEls.length;nodes=nodeEls.map((el,i)=>{const a=off+i*2*Math.PI/nodeEls.length,x=W/2+Math.cos(a)*R,y=H/2+Math.sin(a)*R;el.style.left=x+"px";el.style.top=y+"px";return{el,center:{x,y},color:TOOLS[i].color};});
+      // cards sit to the RIGHT of their logo; right-edge logos pin to the panel edge and clear the chip
+      memEls.forEach(({el,node})=>{const n=nodes[node];if(!n)return;const chip=n.el.querySelector('.chip');const chipHalf=(chip?chip.offsetWidth:64)/2;const cw=el.offsetWidth||172,ch=el.offsetHeight||30,gap=14;let left=n.center.x+chipHalf+gap,top=n.center.y-ch/2;if(left+cw>W-6){left=W-cw-6;top=(n.center.y<H/2)?(n.center.y-chipHalf-ch-gap):(n.center.y+chipHalf+gap);}left=Math.max(6,left);top=Math.min(Math.max(6,top),H-ch-6);el.style.left=left+"px";el.style.top=top+"px";});}
+    layout(); new ResizeObserver(layout).observe(stage); addEventListener("resize",layout); if(document.fonts&&document.fonts.ready)document.fonts.ready.then(layout);
+    const hexA=(h,a)=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`rgba(${r},${g},${b},${a})`;};
+    const eIn=t=>t*t,eOut=t=>1-(1-t)*(1-t);
+    function dot(x,y,r,c,bl){ctx.save();ctx.shadowColor=c;ctx.shadowBlur=bl;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore();}
+    function spawn(f,to,d,k){pulses.push({from:f,to,dur:d,kind:k,start:performance.now()});}
+    function cycle(){if(document.hidden){setTimeout(cycle,1200);return;}const s=activeIdx>=0?activeIdx:Math.floor(Math.random()*nodes.length);spawn(nodes[s].center,hub,820,"in");setTimeout(()=>{rings.push({x:hub.x,y:hub.y,start:performance.now(),dur:700});nodes.forEach((n,i)=>{if(i!==s)spawn(hub,n.center,760+Math.random()*260,"out");});},820);setTimeout(cycle,2300+Math.random()*900);}
+    function draw(now){ctx.clearRect(0,0,W,H);
+      nodes.forEach((n,i)=>{const ac=activeIdx===i,dm=activeIdx>=0&&!ac;ctx.strokeStyle=hexA(ac?n.color:TH.wire,dm?0.06:ac?0.55:0.22);ctx.lineWidth=ac?1.8:1;ctx.beginPath();ctx.moveTo(n.center.x,n.center.y);ctx.lineTo(hub.x,hub.y);ctx.stroke();if(!reduce&&!dm){const tt=((now/2600)+i*0.2)%1,px=n.center.x+(hub.x-n.center.x)*tt,py=n.center.y+(hub.y-n.center.y)*tt;dot(px,py,ac?2:1.3,hexA(ac?n.color:TH.tick,ac?0.9:0.42),ac?10:4);}});
+      for(let i=rings.length-1;i>=0;i--){const rg=rings[i],p=(now-rg.start)/rg.dur;if(p>=1){rings.splice(i,1);continue;}ctx.strokeStyle=hexA(TH.in,(1-p)*0.5);ctx.lineWidth=2;ctx.beginPath();ctx.arc(rg.x,rg.y,30+p*70,0,Math.PI*2);ctx.stroke();}
+      for(let i=pulses.length-1;i>=0;i--){const pl=pulses[i],p=(now-pl.start)/pl.dur;if(p>=1){pulses.splice(i,1);continue;}const e=pl.kind==="in"?eIn(p):eOut(p),x=pl.from.x+(pl.to.x-pl.from.x)*e,y=pl.from.y+(pl.to.y-pl.from.y)*e,core=pl.kind==="in"?TH.in:TH.out,bx=pl.from.x+(pl.to.x-pl.from.x)*Math.max(0,e-0.1),by=pl.from.y+(pl.to.y-pl.from.y)*Math.max(0,e-0.1),tg=ctx.createLinearGradient(bx,by,x,y);tg.addColorStop(0,hexA(core,0));tg.addColorStop(1,hexA(core,0.85));ctx.strokeStyle=tg;ctx.lineWidth=2.6;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(x,y);ctx.stroke();dot(x,y,3.6,core,16);dot(x,y,1.6,"#fff",6);}
+      requestAnimationFrame(draw);}
+    requestAnimationFrame(draw); if(!reduce)cycle(); else setTimeout(cycle,500);
+  })();
+
+  // Strip SMIL animations for reduced-motion users (CSS can't stop SMIL).
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('animateMotion, animate').forEach(a => a.remove());
+  }
+
+  // ---- waitlist: set this to a Formspree / Buttondown / worker URL.
+  // Empty = demo mode (validates + shows success without sending).
+  const WAITLIST_ENDPOINT = "";
+
+  function wireForm(formId, okId, errId){
+    const f = document.getElementById(formId); if(!f) return;
+    const ok = document.getElementById(okId), err = document.getElementById(errId);
+    f.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const email = f.querySelector("input").value.trim();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+      if(err) err.classList.remove("show");
+      if(!WAITLIST_ENDPOINT){
+        console.warn("thinktank: set WAITLIST_ENDPOINT to actually collect emails.");
+        f.style.display="none"; ok.classList.add("show"); return;
+      }
+      const btn = f.querySelector("button"); btn.disabled = true;
+      try{
+        const r = await fetch(WAITLIST_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
+        if(!r.ok) throw new Error("status "+r.status);
+        f.style.display="none"; ok.classList.add("show");
+      }catch(e2){ btn.disabled=false; if(err) err.classList.add("show"); console.error(e2); }
+    });
+  }
+  wireForm("wlform","wlok","wlerr"); wireForm("wlform2","wlok2","wlerr2");
+
+  // ---- nav border on scroll
+  const nav=document.getElementById("nav");
+  addEventListener("scroll",()=>nav.classList.toggle("scrolled",scrollY>8),{passive:true});
+
+  // ---- reveal on scroll
+  const io=new IntersectionObserver((es)=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("in");io.unobserve(en.target);}}),{threshold:.14});
+  document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+
+  // ---- terminal typewriter (deterministic, line by line)
+  const lines=[
+    {c:'<span class="day"># Monday — in ChatGPT</span>'},
+    {c:'<span class="who">you ›</span> use Postgres for the billing service, not Mongo.'},
+    {c:'<span class="ok">✓ captured</span> <span class="mut">· decision · billing · stored locally</span>'},
+    {c:'&nbsp;'},
+    {c:'<span class="who">you ›</span> here&#39;s the prod key sk-live-9f3a2c… <span class="warn">→ ✓ redacted before storage</span>'},
+    {c:'&nbsp;'},
+    {c:'<span class="day"># Tuesday — in Cursor</span>'},
+    {c:'<span class="who">cursor ›</span> what database are we using for billing?'},
+    {c:'<span class="accent">thinktank ↩</span> <span class="recall">recalled: “Use Postgres for the billing service”</span>'},
+    {c:'<span class="mut">&nbsp;&nbsp;&nbsp;decided Mon · in ChatGPT · semantic match 0.92</span>'},
+    {c:'&nbsp;'},
+    {c:'<span class="who">you ›</span> actually, switch billing to Neon.'},
+    {c:'<span class="accent">↻ superseded</span> <span class="mut">now using Neon · old decision archived + logged</span>'}
+  ];
+  const body=document.getElementById("termbody");
+  let started=false;
+  function runTerm(){
+    if(started) return; started=true;
+    lines.forEach((ln,i)=>{ setTimeout(()=>{ const d=document.createElement("div"); d.className="tl"; d.innerHTML=ln.c; body.appendChild(d); }, i*330); });
+  }
+  const tio=new IntersectionObserver((es)=>es.forEach(en=>{if(en.isIntersecting){runTerm();tio.disconnect();}}),{threshold:.3});
+  tio.observe(document.querySelector(".proof"));
+</script>
+</body>
+</html>
