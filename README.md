@@ -12,6 +12,27 @@ No cloud, no account, no API keys.
 > DOM scraping needs validation against the live sites, and the optional LLM
 > extractor is wired but not yet calling a model.
 
+## ⚡ Set it up with your AI agent
+
+New here? Paste this into **Claude Code, Cursor, Codex — or any AI agent** and it'll set thinktank up for you:
+
+```
+You are helping me set up thinktank — a local-first memory layer that gives all my AI
+tools one shared, private brain (https://github.com/ahkamboh/thinktank). It runs 100%
+on my machine (127.0.0.1) — nothing leaves my device. Set it up for me:
+
+1. clone + build (one time):
+   git clone https://github.com/ahkamboh/thinktank
+   cd thinktank && pnpm install && pnpm -r build
+2. wire thinktank's MCP into my coding agents (drop any flag I don't use):
+   node packages/cli/dist/cli.js setup --cursor --claude --codex
+3. start the local server for the browser-extension "Import to memory" button:
+   node packages/cli/dist/cli.js serve --http     # localhost:4319
+4. verify it works: save a test memory, then recall it in a fresh prompt.
+
+If a step needs my input (which agents, the port, pnpm vs npm), ask me first.
+```
+
 ## See it in 30 seconds
 
 ```bash
