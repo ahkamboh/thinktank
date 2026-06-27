@@ -99,9 +99,9 @@ function pngSquare(size, [r, g, b]) {
 }
 
 async function icons() {
-  const teal = [20, 184, 166]; // #14b8a6
+  // brand icons (thinktank hub-mark on a cream badge) — see src/icon.svg
   for (const size of [16, 48, 128]) {
-    await writeFile(join(dist, 'icons', `icon${size}.png`), pngSquare(size, teal));
+    await copyFile(join(src, 'icons', `icon${size}.png`), join(dist, 'icons', `icon${size}.png`));
   }
 }
 
