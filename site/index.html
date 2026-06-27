@@ -446,17 +446,20 @@
     <div class="reveal">
       <span class="eyebrow">Quick start</span>
       <h2 style="font-size:clamp(28px,3.4vw,42px);margin-top:10px">Install in seconds. Every agent wired.</h2>
-      <p class="muted" style="margin-top:16px;font-size:17px">thinktank is a single <span style="font-family:var(--mono);font-size:13px">npx</span> away — point it at your agents, then run the local server for the browser button. Or clone the repo and build from source. All open, all yours.</p>
+      <p class="muted" style="margin-top:16px;font-size:17px">thinktank runs straight from the repo — no install, no account. Clone it, build once, point it at your agents, then run the local server for the browser button.</p>
     </div>
     <div class="cmd reveal">
+      <div><span class="c"># clone + build (one time)</span></div>
+      <div><span class="g">$</span> git clone https://github.com/ahkamboh/thinktank</div>
+      <div><span class="g">$</span> cd thinktank &amp;&amp; pnpm install &amp;&amp; pnpm -r build</div>
+      <div style="height:10px"></div>
       <div><span class="c"># point thinktank at your agents</span></div>
-      <div><span class="g">$</span> npx @thinktank/cli setup <span class="a">--cursor --claude --codex</span></div>
+      <div><span class="g">$</span> node packages/cli/dist/cli.js setup <span class="a">--cursor --claude --codex</span></div>
       <div style="height:10px"></div>
       <div><span class="c"># run the local server for the browser button</span></div>
-      <div><span class="g">$</span> npx @thinktank/cli serve <span class="a">--http</span>  <span class="c">→ localhost:4319</span></div>
+      <div><span class="g">$</span> node packages/cli/dist/cli.js serve <span class="a">--http</span>  <span class="c">→ localhost:4319</span></div>
       <div style="height:10px"></div>
-      <div><span class="c"># building from source today?</span></div>
-      <div><span class="c"># → github.com/ahkamboh/thinktank</span></div>
+      <div><span class="c"># npm package (npx @thinktank/cli) — coming soon</span></div>
     </div>
   </div>
 </section>
