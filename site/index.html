@@ -461,6 +461,20 @@
       <div style="height:10px"></div>
       <div><span class="c"># npm package (npx @thinktank/cli) — coming soon</span></div>
     </div>
+    <p class="muted" style="margin-top:26px;font-size:15px">Or paste this into <b>Claude Code · Cursor · Codex</b> — or any AI agent — and it sets thinktank up for you:</p>
+    <div class="cmd reveal" style="white-space:pre-wrap;line-height:1.6"><span class="c"># paste me into your agent ↓</span>
+
+You are helping me set up thinktank — a local-first memory layer that gives all my AI tools one shared, private brain (github.com/ahkamboh/thinktank). It runs 100% on my machine; nothing leaves my device. Set it up:
+
+1. clone + build:  git clone https://github.com/ahkamboh/thinktank
+   then  cd thinktank && pnpm install && pnpm -r build
+2. wire thinktank's MCP into my agents (drop any I don't use):
+   node packages/cli/dist/cli.js setup --cursor --claude --codex
+3. run the local server for the browser-extension button:
+   node packages/cli/dist/cli.js serve --http   (localhost:4319)
+4. verify: save a test memory, then recall it in a fresh prompt.
+
+Ask me first if a step needs my input.</div>
   </div>
 </section>
 
