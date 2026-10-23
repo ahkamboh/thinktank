@@ -11,6 +11,10 @@ export {
   MemoryStore,
   DEFAULT_DB_PATH,
   DEFAULT_DB_DIR,
+  BUSY_TIMEOUT_MS,
+  distanceToCosine,
+  type MemoryStoreOptions,
+  type ResumeCandidateOptions,
   type SearchOptions,
   type NearestHit,
   type NearestOptions,
@@ -31,6 +35,11 @@ export {
   pickExtractor,
   classify,
   isNoise,
+  isTrivialNote,
+  splitSentences,
+  chunkNote,
+  noteCandidates,
+  NOTE_MAX_CHARS,
   pickClassifier,
   HeuristicClassifier,
   LLMClassifier,
@@ -41,10 +50,18 @@ export {
 export {
   MergeEngine,
   contradicts,
+  addsInformation,
+  openContradictions,
   DEFAULT_DEDUPE_THRESHOLD,
   DEFAULT_CONFLICT_SIM_MIN,
   type MergeOptions,
 } from './merge.js';
+export {
+  projectKey,
+  normalizeAliases,
+  loadProjectAliases,
+  type ProjectAliases,
+} from './project.js';
 export {
   redactSecrets,
   type RedactionResult,

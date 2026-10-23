@@ -1,13 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { IngestResult, MemoryKind } from '@thinktank/core';
+import { openContradictions } from '@thinktank/core';
+import type { IngestResult, Memory, MemoryKind, MemoryStore } from '@thinktank/core';
 import { getBrain } from './store.js';
 import {
   DEFAULT_TOKEN_BUDGET,
+  RESUME_LINE_MAX_CHARS,
   formatMemoryLine,
-  packToBudget,
   rankForResume,
-  renderMemories,
+  renderWithRelated,
 } from './format.js';
 
 export const SERVER_NAME = 'thinktank';
@@ -42,6 +43,56 @@ const KIND_VALUES = [
 
 function text(body: string) {
   return { content: [{ type: 'text' as const, text: body }] };
+}
+
+/** A scoped resume with fewer memories than this also shows related ones. */
+export const RESUME_MIN_SCOPED = 5;
+
+/** A scoped search with fewer hits than this also searches other projects. */
+export const SEARCH_MIN_SCOPED = 3;
+
+/**
+ * Search hits less similar than this (cosine) are dropped unless they matched
+ * a query keyword. On MiniLM, unrelated memories score ~0.0-0.2 and relevant
+ * ones ~0.3+, so a scope with nothing relevant reads as empty and falls back.
+ */
+export const SEARCH_MIN_COSINE = 0.25;
+
+/** Cross-project fallback hits must be at least this semantically close. */
+export const RELATED_MIN_COSINE = 0.3;
+
+/** "fundedroll_landingpage" -> "fundedroll landingpage": a project name as a query. */
+function projectAsQuery(project: string): string {
+  return project.replace(/[-_./]+/g, ' ').trim();
+}
+
+/**
+ * Global semantic fallback for a thin project scope: close matches from OTHER
+ * projects (every spelling/alias of `project` is excluded - those were already
+ * searched), so a new or misnamed project still gets useful context.
+ */
+async function relatedFromOtherProjects(
+  store: MemoryStore,
+  query: string,
+  project: string,
+  exclude: Set<number>,
+  limit = 8,
+): Promise<Memory[]> {
+  const same = new Set(store.projectVariants(project));
+  const hits = await store.search(query, { limit: 30, minCosine: RELATED_MIN_COSINE });
+  return hits
+    .filter(
+      (h) =>
+        !exclude.has(h.id) &&
+        !(h.project !== null && same.has(h.project)) &&
+        (h.cosine ?? 0) >= RELATED_MIN_COSINE,
+    )
+    .slice(0, limit);
+}
+
+function clip(s: string, max = 160): string {
+  const t = s.replace(/\s+/g, ' ');
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
 /** Summarize what `ingest()` did to one event, for the save tool's reply. */
@@ -97,16 +148,29 @@ export function createServer(): McpServer {
     },
     async ({ project, tokenBudget }) => {
       const { store } = getBrain();
-      const recent = store.recent(50, project);
-      const ranked = rankForResume(recent);
-      const body = renderMemories(ranked, tokenBudget ?? DEFAULT_TOKEN_BUDGET);
+      // Newest saves + every standing constraint/preference + recent decisions,
+      // shown newest-first, then rules, then decisions.
+      const ranked = rankForResume(store.resumeCandidates(project));
+      const related =
+        project && ranked.length < RESUME_MIN_SCOPED
+          ? await relatedFromOtherProjects(
+              store,
+              projectAsQuery(project),
+              project,
+              new Set(ranked.map((m) => m.id)),
+            )
+          : [];
+      const body =
+        renderWithRelated(ranked, related, tokenBudget ?? DEFAULT_TOKEN_BUDGET, {
+          maxChars: RESUME_LINE_MAX_CHARS,
+        }) || 'No matching memories yet.';
 
-      const contradictions = store.listContradictions(project);
+      const open = openContradictions(store, project);
       const note =
-        contradictions.length > 0
-          ? `\n\nHeads up: ${contradictions.length} unresolved contradiction(s) on record. ` +
-            `Most recent: "${contradictions[0]!.activeText}" (now) vs ` +
-            `"${contradictions[0]!.supersededText}" (old).`
+        open.length > 0
+          ? `\n\nHeads up: ${open.length} unresolved contradiction(s) on record. ` +
+            `Most recent: "${clip(open[0]!.activeText)}" (now) vs ` +
+            `"${clip(open[0]!.supersededText)}" (old).`
           : '';
 
       const header = project
@@ -140,12 +204,23 @@ export function createServer(): McpServer {
     },
     async ({ query, project, tokenBudget }) => {
       const { store } = getBrain();
-      const hits = await store.search(query, { project, limit: 20 });
-      const packed = packToBudget(hits, tokenBudget ?? DEFAULT_TOKEN_BUDGET);
-      if (packed.length === 0) return text(`No memories found for: "${query}".`);
-      return text(
-        `Memories for "${query}":\n${packed.map(formatMemoryLine).join('\n')}`,
-      );
+      const hits = await store.search(query, {
+        project,
+        limit: 20,
+        minCosine: SEARCH_MIN_COSINE,
+      });
+      const related =
+        project && hits.length < SEARCH_MIN_SCOPED
+          ? await relatedFromOtherProjects(
+              store,
+              query,
+              project,
+              new Set(hits.map((h) => h.id)),
+            )
+          : [];
+      const body = renderWithRelated(hits, related, tokenBudget ?? DEFAULT_TOKEN_BUDGET);
+      if (!body) return text(`No memories found for: "${query}".`);
+      return text(`Memories for "${query}":\n${body}`);
     },
   );
 
@@ -158,8 +233,10 @@ export function createServer(): McpServer {
         'Call automatically whenever the user states something durable to ' +
         'remember (a decision, constraint, preference, fact, state, or code) — ' +
         'do not wait to be asked. Persists it so other tools/sessions remember ' +
-        'it; runs through the merge engine (duplicates merge, conflicts ' +
-        'supersede older info). Never save chit-chat or secrets.',
+        'it. The text is stored as one memory, as written (write a ' +
+        'self-contained note, up to ~2,000 characters); duplicates merge and ' +
+        'a short statement that contradicts an older one supersedes it. Never ' +
+        'save chit-chat or secrets.',
       inputSchema: {
         text: z.string().describe('The thing to remember.'),
         project: z.string().optional().describe('Project / repo scope.'),
@@ -177,15 +254,19 @@ export function createServer(): McpServer {
     },
     async ({ text: content, project, kind, tool, model, source }) => {
       const { engine } = getBrain();
-      const results = await engine.ingest({
-        source: source ?? tool?.toLowerCase() ?? 'manual',
-        tool,
-        model,
-        ts: Date.now(),
-        project,
-        text: content,
-        kind,
-      });
+      // An explicit save is ONE memory, as written - not split into sentences.
+      const results = await engine.ingest(
+        {
+          source: source ?? tool?.toLowerCase() ?? 'manual',
+          tool,
+          model,
+          ts: Date.now(),
+          project,
+          text: content,
+          kind,
+        },
+        { mode: 'note' },
+      );
       return text(summarizeIngest(results));
     },
   );
@@ -211,7 +292,7 @@ export function createServer(): McpServer {
       const { store } = getBrain();
       const mems = store.recent(limit ?? 10, project);
       if (mems.length === 0) return text('No memories yet.');
-      return text(mems.map(formatMemoryLine).join('\n'));
+      return text(mems.map((m) => formatMemoryLine(m)).join('\n'));
     },
   );
 
@@ -226,6 +307,7 @@ export function createServer(): McpServer {
     async () => {
       const { store, dbPath } = getBrain();
       const s = store.stats();
+      const sql = store.sqliteInfo();
       const byKind = Object.entries(s.byKind)
         .map(([k, c]) => `${k}=${c}`)
         .join(', ');
@@ -235,6 +317,7 @@ export function createServer(): McpServer {
           `total: ${s.total} (active ${s.active}, superseded ${s.superseded})`,
           `contradictions: ${s.contradictions}`,
           `by kind (active): ${byKind || 'none'}`,
+          `sqlite: journal_mode=${sql.journalMode}, busy_timeout=${sql.busyTimeoutMs}ms`,
         ].join('\n'),
       );
     },

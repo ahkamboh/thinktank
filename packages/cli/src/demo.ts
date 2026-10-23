@@ -102,7 +102,7 @@ export async function runDemo(): Promise<void> {
 
   const hits = await store.search(query, { project: PROJECT, limit: 20 });
   const packed = packToBudget(hits, DEFAULT_TOKEN_BUDGET);
-  const rendered = packed.map(formatMemoryLine).join('\n');
+  const rendered = packed.map((m) => formatMemoryLine(m)).join('\n');
   console.log('Cursor receives:');
   console.log(
     rendered

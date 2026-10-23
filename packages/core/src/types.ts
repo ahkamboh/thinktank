@@ -128,6 +128,21 @@ export interface Extractor {
   extract(event: MemoryEvent): Promise<MemoryCandidate[]> | MemoryCandidate[];
 }
 
+/**
+ * How the merge engine turns an event into candidates:
+ * - `note`: an explicit save (MCP memory_save). The text is stored as ONE
+ *   memory, verbatim apart from secret redaction; only a note longer than the
+ *   note cap is chunked, on paragraph/sentence boundaries.
+ * - `chat`: a raw chat turn or export message. The extractor splits it into
+ *   atomic candidates and drops conversational noise.
+ */
+export type IngestMode = 'note' | 'chat';
+
+export interface IngestOptions {
+  /** Default `chat`. */
+  mode?: IngestMode;
+}
+
 /** What the merge engine did with a single candidate. */
 export type IngestAction = 'inserted' | 'deduped' | 'superseded';
 
@@ -151,8 +166,10 @@ export interface IngestResult {
 export interface SearchResult extends Memory {
   /** Final combined rank score (higher = more relevant). */
   score: number;
-  /** Raw vector L2 distance, if this candidate came from vector search. */
+  /** Raw vector L2 distance to the query. */
   distance?: number;
+  /** Cosine similarity to the query (1 = same meaning, ~0 = unrelated). */
+  cosine?: number;
 }
 
 export interface SaveOptions {

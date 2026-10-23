@@ -111,13 +111,157 @@ export function classify(text: string): MemoryKind {
   return 'fact';
 }
 
-/** Split a block of prose into trimmed sentence-ish chunks. */
-function splitSentences(text: string): string[] {
-  return text
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9"'`])/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+/** Words that end in "." without ending the sentence ("e.g.", "vs.", "Dr."). */
+const ABBREVIATIONS = new Set([
+  'e.g', 'i.e', 'etc', 'vs', 'cf', 'viz', 'approx', 'incl', 'excl', 'misc',
+  'resp', 'esp', 'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'st', 'mt',
+  'inc', 'ltd', 'co', 'corp', 'dept', 'univ', 'al', 'jan', 'feb', 'mar',
+  'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec', 'a.m',
+  'p.m', 'u.s', 'u.k', 'u.s.a', 'e.u',
+]);
+
+/** Abbreviations that only continue the sentence before a number ("No. 5"). */
+const NUMERIC_ABBREVIATIONS = new Set([
+  'no', 'nos', 'vol', 'fig', 'figs', 'eq', 'sec', 'ch', 'p', 'pp', 'ref',
+]);
+
+/** Does the "." at `dot` end an abbreviation or initial rather than a sentence? */
+function isAbbreviationDot(s: string, dot: number, nextChar: string): boolean {
+  let k = dot;
+  while (k > 0 && /[A-Za-z.]/.test(s[k - 1]!)) k--;
+  const word = s.slice(k, dot);
+  if (!word) return false;
+  const lower = word.toLowerCase();
+  if (ABBREVIATIONS.has(lower)) return true;
+  if (NUMERIC_ABBREVIATIONS.has(lower)) return /[0-9]/.test(nextChar);
+  // Dotted forms ("U.S", "e.g") and single-letter initials ("J. Smith").
+  return /^(?:[a-z]\.)+[a-z]$/i.test(word) || /^[A-Z]$/.test(word);
+}
+
+/**
+ * Split prose into trimmed sentences. A sentence ends at . ! or ? followed by
+ * a space and an uppercase letter, digit or quote, EXCEPT after abbreviations
+ * and initials, and never inside (parentheses), [brackets], {braces} or
+ * `inline code` - so "use X (e.g. Y. Z)" or "see `a. B`" stay whole.
+ */
+export function splitSentences(text: string): string[] {
+  const s = text.replace(/\s+/g, ' ').trim();
+  const out: string[] = [];
+  let start = 0;
+  let depth = 0;
+  let inCode = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]!;
+    if (c === '`') {
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode) continue;
+    if (c === '(' || c === '[' || c === '{') depth++;
+    else if (c === ')' || c === ']' || c === '}') depth = Math.max(0, depth - 1);
+    else if ((c === '.' || c === '!' || c === '?') && depth === 0) {
+      // Swallow "..." / "?!" and closing quotes into this sentence.
+      let j = i;
+      while (j + 1 < s.length && /[.!?"'”’]/.test(s[j + 1]!)) j++;
+      if (s[j + 1] !== ' ') continue;
+      const next = s[j + 2] ?? '';
+      if (!/[A-Z0-9"'`“‘]/.test(next)) continue;
+      if (c === '.' && j === i && isAbbreviationDot(s, i, next)) continue;
+      out.push(s.slice(start, j + 1).trim());
+      start = j + 2;
+      i = j + 1;
+    }
+  }
+  out.push(s.slice(start).trim());
+  return out.filter(Boolean);
+}
+
+/**
+ * Longest text stored as a single memory by an explicit note save. Longer
+ * notes are chunked on paragraph, then sentence, boundaries.
+ */
+export const NOTE_MAX_CHARS = 2000;
+
+/**
+ * Is an explicit note pure filler ("ok", "thanks!", a lone emoji)? Unlike
+ * isNoise, short rules, imperatives and questions are NOT filler here: the
+ * caller chose to save them.
+ */
+export function isTrivialNote(text: string): boolean {
+  const s = text.trim();
+  if (s.replace(/[^\p{L}\p{N}]/gu, '').length < 2) return true;
+  if (FILLER_RE.test(s)) return true;
+  return emojiCount(s) > 0 && wordCount(s) <= 2 && !DURABLE_RE.test(s);
+}
+
+/** Greedily join parts with `sep` into chunks no longer than `max`. */
+function packParts(parts: string[], sep: string, max: number): string[] {
+  const out: string[] = [];
+  let cur = '';
+  for (const p of parts) {
+    if (!cur) cur = p;
+    else if (cur.length + sep.length + p.length <= max) cur += sep + p;
+    else {
+      out.push(cur);
+      cur = p;
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/** Hard-cut an over-long sentence at word boundaries. */
+function hardCut(text: string, max: number): string[] {
+  const out: string[] = [];
+  let k = 0;
+  while (k < text.length) {
+    let end = Math.min(text.length, k + max);
+    if (end < text.length) {
+      const sp = text.lastIndexOf(' ', end);
+      if (sp > k + max / 2) end = sp;
+    }
+    out.push(text.slice(k, end).trim());
+    k = end;
+  }
+  return out.filter(Boolean);
+}
+
+/**
+ * Split a note into chunks of at most `max` chars, preferring paragraph, then
+ * sentence, then word boundaries. A note within the cap comes back unchanged.
+ */
+export function chunkNote(text: string, max: number = NOTE_MAX_CHARS): string[] {
+  const s = text.trim();
+  if (s.length <= max) return s ? [s] : [];
+  const paraChunks: string[] = [];
+  for (const para of s.split(/\n\s*\n/)) {
+    const p = para.trim();
+    if (!p) continue;
+    if (p.length <= max) {
+      paraChunks.push(p);
+      continue;
+    }
+    const sentences = splitSentences(p).flatMap((x) =>
+      x.length <= max ? [x] : hardCut(x, max),
+    );
+    paraChunks.push(...packParts(sentences, ' ', max));
+  }
+  return packParts(paraChunks, '\n\n', max);
+}
+
+/**
+ * Candidates for an explicit note save: the whole note as ONE memory (chunked
+ * only past NOTE_MAX_CHARS), keeping the caller's kind or classifying the note
+ * as a whole. No sentence splitting, no per-sentence noise filtering.
+ */
+export function noteCandidates(event: MemoryEvent): MemoryCandidate[] {
+  const raw = event.text?.trim();
+  if (!raw || isTrivialNote(raw)) return [];
+  return chunkNote(raw).map((text) => ({
+    text,
+    kind: event.kind ?? classify(text),
+    confidence: 0.95,
+  }));
 }
 
 /**
@@ -135,8 +279,9 @@ export class HeuristicExtractor implements Extractor {
     if (!raw) return [];
 
     // Pre-classified, single-statement events pass through *if* they carry
-    // substance (so the MCP `save` tool and export parsers stay authoritative,
-    // but a pre-tagged greeting still gets dropped).
+    // substance (so export parsers stay authoritative, but a pre-tagged
+    // greeting still gets dropped). Explicit MCP saves don't come through the
+    // extractor at all - see noteCandidates().
     if (event.kind && raw.length <= 300 && splitSentences(raw).length <= 1) {
       return isNoise(raw) ? [] : [{ text: raw, kind: event.kind, confidence: 0.9 }];
     }
@@ -153,10 +298,14 @@ export class HeuristicExtractor implements Extractor {
     }
     const prose = raw.replace(CODE_FENCE_RE, ' ');
 
-    // 2) Sentence pass - keep only non-noise sentences.
-    for (const sentence of splitSentences(prose)) {
+    // 2) Sentence pass - keep only non-noise sentences. A caller's kind
+    // describes the whole message; once it is split, each sentence is
+    // classified on its own instead of inheriting it.
+    const sentences = splitSentences(prose);
+    for (const sentence of sentences) {
       if (isNoise(sentence)) continue;
-      const kind = event.kind ?? classify(sentence);
+      const kind =
+        sentences.length === 1 && event.kind ? event.kind : classify(sentence);
       const confidence = kind === 'fact' ? 0.5 : 0.7;
       candidates.push({ text: sentence, kind, confidence });
     }

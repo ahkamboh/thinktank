@@ -56,6 +56,72 @@ function looksLikeHighEntropySecret(s: string): boolean {
   return shannonPerChar(s) >= 4.0;
 }
 
+/**
+ * One piece of a path, URL or identifier that reads like a word: lowercase,
+ * Capitalized / camelCase, ALL-CAPS, or digits, at most 24 chars, with few
+ * letter/digit switches ("plot33", "GitHub", "v3", "12oct2026"). Random
+ * base62/base64 runs switch case mid-word ("wJalrXUtnFEMI") or flip between
+ * letters and digits constantly ("Zk8QwP3nR7tY") and fail this. The regex has
+ * no nested quantifiers, so it can't backtrack badly.
+ */
+const WORDY_PIECE_RE = /^(?:[A-Za-z0-9]?[a-z0-9]*(?:[A-Z][a-z0-9]+)*|[A-Z0-9]+)$/;
+
+function letterDigitSwitches(p: string): number {
+  let n = 0;
+  for (let i = 1; i < p.length; i++) {
+    if (/[0-9]/.test(p[i - 1]!) !== /[0-9]/.test(p[i]!)) n++;
+  }
+  return n;
+}
+
+function isWordyPiece(p: string): boolean {
+  return p.length <= 24 && WORDY_PIECE_RE.test(p) && letterDigitSwitches(p) <= 4;
+}
+
+/** Made only of word-like pieces joined by separators (a path, slug, file name)? */
+function isWordy(s: string): boolean {
+  const pieces = s.split(/[/_+=-]+/).filter(Boolean);
+  return pieces.length >= 2 && pieces.every(isWordyPiece);
+}
+
+/** One path/URL segment that is itself an embedded token (webhook id, reset key). */
+function looksLikeSecretSegment(seg: string): boolean {
+  if (seg.length < 20 || isWordy(seg) || isWordyPiece(seg)) return false;
+  if (!/[A-Za-z]/.test(seg) || !/[0-9]/.test(seg)) return false;
+  // Strictly above 4 bits/char: hex (commit SHAs) can't exceed it.
+  return shannonPerChar(seg) > 4.0;
+}
+
+/**
+ * Generic catch-all for one HIGH_ENTROPY_RE match. Ordinary file paths, URLs,
+ * slugs and file names are long and mixed letters+digits too, so:
+ *  - a match made only of word-like pieces is left alone;
+ *  - a "/"-separated match that is mostly word-like segments is a path/URL,
+ *    and only its token-looking segments are redacted;
+ *  - anything else (a random base62/base64 blob, "/" or not) is redacted whole.
+ */
+function redactGeneric(m: string, found: RedactionFinding[]): string {
+  if (m.includes('/')) {
+    const segs = m.split('/');
+    const nonEmpty = segs.filter(Boolean);
+    const plain = nonEmpty.filter(
+      (s) => s.length < 8 || isWordyPiece(s) || isWordy(s),
+    ).length;
+    if (plain * 2 >= nonEmpty.length) {
+      return segs
+        .map((s) => {
+          if (!looksLikeSecretSegment(s)) return s;
+          found.push({ type: 'high-entropy', preview: mask(s) });
+          return '[REDACTED:token]';
+        })
+        .join('/');
+    }
+  }
+  if (!looksLikeHighEntropySecret(m) || isWordy(m)) return m;
+  found.push({ type: 'high-entropy', preview: mask(m) });
+  return '[REDACTED:token]';
+}
+
 // -- Private key blocks (multi-line). Redact the whole armored block. --------
 const PRIVATE_KEY_RE =
   /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----/g;
@@ -141,11 +207,7 @@ export function redactSecrets(input: string): RedactionResult {
   }
 
   // 3) Conservative generic catch-all for anything secret-shaped we missed.
-  text = text.replace(HIGH_ENTROPY_RE, (m) => {
-    if (!looksLikeHighEntropySecret(m)) return m;
-    found.push({ type: 'high-entropy', preview: mask(m) });
-    return '[REDACTED:token]';
-  });
+  text = text.replace(HIGH_ENTROPY_RE, (m) => redactGeneric(m, found));
 
   return { text, found };
 }
