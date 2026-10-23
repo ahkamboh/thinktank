@@ -8,6 +8,7 @@
 // toolbar so a single CSS change on their side can't hide our entry point.
 
 import {
+  getStartHint,
   type BgMessage,
   type CapturePayload,
   type IngestResponse,
@@ -80,7 +81,7 @@ async function ingestCurrent(): Promise<IngestResponse> {
       'ok',
     );
   } else if (resp.error === 'unreachable') {
-    toast('thinktank is not running. Start it with: thinktank serve --http', 'err');
+    toast(`thinktank is not running. ${await getStartHint()}`, 'err', 10000);
   } else {
     toast(`Import failed: ${resp.error ?? 'unknown error'}`, 'err');
   }
@@ -172,7 +173,7 @@ function injectStyles(): void {
     #thinktank-fab .tt-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1fae5; }
     #thinktank-toast {
       position: fixed; right: 20px; bottom: 72px; z-index: 2147483647;
-      max-width: 320px; padding: 10px 14px; border-radius: 10px;
+      max-width: 320px; padding: 10px 14px; border-radius: 10px; overflow-wrap: anywhere;
       font: 500 13px/1.4 ui-sans-serif, system-ui, sans-serif; color: #fff;
       box-shadow: 0 4px 16px rgba(0,0,0,.25); opacity: 0; transform: translateY(6px);
       transition: opacity .15s ease, transform .15s ease; pointer-events: none;

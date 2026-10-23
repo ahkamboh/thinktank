@@ -51,6 +51,28 @@ export async function setConfig(patch: Partial<Config>): Promise<void> {
   await chrome.storage.sync.set(patch);
 }
 
+/**
+ * What to tell the user to run when thinktank isn't reachable. The CLI is not
+ * on PATH unless they linked it, so a bare `thinktank serve --http` usually
+ * fails. Prefer the exact command the server reported on an earlier /health
+ * (absolute paths, works from any folder); otherwise give the repo-relative one.
+ */
+export function startHint(port: number, knownCommand?: string): string {
+  if (knownCommand) return `Start it with: ${knownCommand}`;
+  const portFlag = port !== DEFAULT_CONFIG.port ? ` --port=${port}` : '';
+  return `In your thinktank folder, run: node packages/cli/dist/cli.js serve --http${portFlag}`;
+}
+
+/** Key in chrome.storage.local (per machine, since it holds local paths). */
+export const START_COMMAND_KEY = 'startCommand';
+
+export async function getStartHint(): Promise<string> {
+  const cfg = await getConfig();
+  const stored = await chrome.storage.local.get(START_COMMAND_KEY);
+  const known = stored[START_COMMAND_KEY];
+  return startHint(cfg.port, typeof known === 'string' && known ? known : undefined);
+}
+
 /** thinktank only ever runs on the loopback interface. We never build a remote URL. */
 export function baseUrl(port: number): string {
   return `http://127.0.0.1:${port}`;

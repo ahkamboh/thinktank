@@ -24,10 +24,12 @@ on my machine (127.0.0.1) — nothing leaves my device. Set it up for me:
 1. clone + build (one time):
    git clone https://github.com/ahkamboh/thinktank
    cd thinktank && pnpm install && pnpm -r build
-2. wire thinktank's MCP into my coding agents (drop any flag I don't use):
-   node packages/cli/dist/cli.js setup --cursor --claude --codex
-3. start the local server for the browser-extension "Import to memory" button:
-   node packages/cli/dist/cli.js serve --http     # localhost:4319
+2. wire thinktank's MCP into my AI apps (drop any flag I don't use):
+   node packages/cli/dist/cli.js setup --cursor --claude --claude-desktop --codex
+3. keep the local server running for the browser-extension "Import to memory" button
+   (macOS; it adds a login item, so ask me first):
+   node packages/cli/dist/cli.js setup --daemon   # localhost:4319
+   (elsewhere, or if I say no: node packages/cli/dist/cli.js serve --http)
 4. verify it works: save a test memory, then recall it in a fresh prompt.
 
 If a step needs my input (which agents, the port, pnpm vs npm), ask me first.
@@ -85,10 +87,12 @@ pnpm install
 pnpm -r build
 
 # 2. wire thinktank into your agents (writes their MCP config)
-node packages/cli/dist/cli.js setup --cursor --claude --codex
+node packages/cli/dist/cli.js setup --cursor --claude --claude-desktop --codex
 
-# 3a. run the local server for the browser extension's "Import to memory" button
-node packages/cli/dist/cli.js serve --http        # localhost:4319
+# 3a. keep the local server running for the browser extension's "Import to memory" button
+node packages/cli/dist/cli.js setup --daemon      # macOS LaunchAgent, localhost:4319
+#     undo: setup --uninstall-daemon. Not on macOS? Run it yourself:
+node packages/cli/dist/cli.js serve --http
 
 # 3b. ...or import a ChatGPT / Claude.ai data export directly
 node packages/cli/dist/cli.js ingest conversations.json --project=my-app
@@ -99,6 +103,12 @@ Then load the browser extension (`apps/extension/dist`) unpacked in
 Claude.ai. See [`apps/extension/README.md`](apps/extension/README.md).
 
 (Once published, the agent config will use `npx -y @thinktank/cli serve`.)
+
+Setup writes a node path that survives upgrades (`/opt/homebrew/bin/node`, not
+the `Cellar/node/<version>` directory that `brew upgrade` deletes). If an app
+still can't start thinktank after a node upgrade or after you move the repo,
+run `node packages/cli/dist/cli.js setup --repair`. It rewrites only the
+entries whose node or CLI path is gone.
 
 ## Privacy
 

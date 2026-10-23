@@ -116,12 +116,21 @@ async function main() {
 
   // ------------------------------------------------------- HTTP /ingest
   console.log('\nScenario 2: HTTP /ingest capture round-trip');
-  const http = await startHttp({ port: TEST_PORT });
+  const startCommand = 'node /path/to/thinktank/packages/cli/dist/cli.js serve --http';
+  const http = await startHttp({ port: TEST_PORT, startCommand });
 
   const health = await fetch(`http://127.0.0.1:${TEST_PORT}/health`).then((r) =>
     r.json(),
   );
   assert(health.ok === true, '/health responds ok');
+  assert(health.startCommand === startCommand, '/health reports how to start the server');
+
+  // A second server on a taken port must fail, not claim to be listening.
+  const second = await startHttp({ port: TEST_PORT }).then(
+    () => null,
+    (err: NodeJS.ErrnoException) => err,
+  );
+  assert(second?.code === 'EADDRINUSE', 'startHttp rejects with EADDRINUSE on a taken port');
 
   const ingestResp = await fetch(`http://127.0.0.1:${TEST_PORT}/ingest`, {
     method: 'POST',

@@ -14,6 +14,12 @@ const HOST = '127.0.0.1';
 
 export interface HttpServerOptions {
   port?: number;
+  /**
+   * Shell command that starts this server, reported by GET /health so the
+   * browser extension can show a working start command if it later finds the
+   * server down.
+   */
+  startCommand?: string;
 }
 
 /** A running HTTP server with a clean stop (for tests / programmatic use). */
@@ -39,7 +45,7 @@ export async function startHttp(opts: HttpServerOptions = {}): Promise<HttpHandl
 
   app.get('/health', (_req: Request, res: Response) => {
     const { dbPath } = getBrain();
-    res.json({ ok: true, server: 'thinktank', dbPath });
+    res.json({ ok: true, server: 'thinktank', dbPath, startCommand: opts.startCommand });
   });
 
   // --- MCP Streamable HTTP (stateless) ------------------------------------
@@ -88,8 +94,14 @@ export async function startHttp(opts: HttpServerOptions = {}): Promise<HttpHandl
     }
   });
 
-  const httpServer = await new Promise<Server>((resolve) => {
-    const s = app.listen(port, HOST, () => {
+  // Express 5 hands listen errors (e.g. EADDRINUSE) to this callback; reject
+  // so callers fail loudly instead of reporting a server that isn't there.
+  const httpServer = await new Promise<Server>((resolve, reject) => {
+    const s = app.listen(port, HOST, (err?: Error) => {
+      if (err) {
+        reject(err);
+        return;
+      }
       console.error(
         `[thinktank] HTTP server on http://${HOST}:${port}  ` +
           `(MCP: POST /mcp, capture: POST /ingest)`,

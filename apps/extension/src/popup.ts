@@ -1,5 +1,6 @@
 import {
   getConfig,
+  getStartHint,
   setConfig,
   type BgMessage,
   type IngestResponse,
@@ -71,7 +72,7 @@ async function init(): Promise<void> {
     setStatus('Checking...', '');
     const resp = await messageBackground({ type: 'health' });
     if (resp.ok) setStatus('Connected to thinktank.', 'ok');
-    else setStatus('Not running. Start: thinktank serve --http', 'err');
+    else setStatus(`Not running. ${await getStartHint()}`, 'err');
   });
 
   $<HTMLButtonElement>('import-current').addEventListener('click', async () => {
@@ -83,7 +84,7 @@ async function init(): Promise<void> {
     } else if (resp.error === 'empty') {
       setStatus('No messages found. Open a chat first.', 'warn');
     } else if (resp.error === 'unreachable') {
-      setStatus('Not running. Start: thinktank serve --http', 'err');
+      setStatus(`Not running. ${await getStartHint()}`, 'err');
     } else {
       setStatus(`Failed: ${resp.error ?? 'open a ChatGPT/Claude tab'}`, 'err');
     }

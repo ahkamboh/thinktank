@@ -84,6 +84,17 @@ try {
   ]);
   check('POST /ingest accepts bare turn array', bare.ok === true);
 
+  // 6. the "not running" hint is a command that works without thinktank on PATH
+  const { startHint } = await import('../src/common.ts');
+  const remembered = 'node /Users/me/thinktank/packages/cli/dist/cli.js serve --http';
+  check('hint prefers the command /health reported', startHint(4319, remembered).endsWith(remembered));
+  check(
+    'fallback hint runs the built CLI with node',
+    startHint(4319).endsWith('node packages/cli/dist/cli.js serve --http'),
+  );
+  check('fallback hint carries a custom port', startHint(5001).endsWith('serve --http --port=5001'));
+  check('hint never suggests the bare `thinktank` command', !/(^|\s)thinktank serve/.test(startHint(4319)));
+
   assert.equal(failures, 0, `${failures} check(s) failed`);
   console.log('\n[ext] all checks passed');
 } finally {
