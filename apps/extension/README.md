@@ -19,11 +19,19 @@ The thinktank HTTP server must be running locally:
 
 ```bash
 # from the repo root, after `pnpm install && pnpm build`
+node packages/cli/dist/cli.js setup --daemon   # macOS: keep it running (login item)
+# or run it yourself in a terminal:
 node packages/cli/dist/cli.js serve --http
-# or, once linked globally:  thinktank serve --http
 ```
 
-It listens on `127.0.0.1:4319` by default (loopback only).
+It listens on `127.0.0.1:4319` by default (loopback only). `setup --daemon`
+installs a LaunchAgent that starts the server at login and restarts it if it
+exits; `setup --uninstall-daemon` removes it. If you change the port in the
+popup, pass the same `--port=N` to either command.
+
+When the server is down, the button and popup tell you the exact command to
+start it. After one successful connection that is the full `node /path/to/cli.js
+serve --http` command, so it works from any folder.
 
 ## Build & load
 

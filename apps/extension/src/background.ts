@@ -3,15 +3,35 @@
 // blocked. It only ever talks to 127.0.0.1 - there is no remote endpoint
 // anywhere in this extension.
 
-import { getConfig, baseUrl, type BgMessage, type IngestResponse } from './common';
+import {
+  getConfig,
+  baseUrl,
+  START_COMMAND_KEY,
+  type BgMessage,
+  type IngestResponse,
+} from './common';
+
+/**
+ * Ask the server how it was started and remember it, so a later "not running"
+ * message can show a command that works from any folder.
+ */
+async function checkHealth(port: number): Promise<boolean> {
+  const r = await fetch(`${baseUrl(port)}/health`, { method: 'GET' });
+  if (r.ok) {
+    const body = (await r.json().catch(() => ({}))) as { startCommand?: unknown };
+    if (typeof body.startCommand === 'string' && body.startCommand) {
+      await chrome.storage.local.set({ [START_COMMAND_KEY]: body.startCommand });
+    }
+  }
+  return r.ok;
+}
 
 async function handle(msg: BgMessage): Promise<IngestResponse> {
   const cfg = await getConfig();
 
   if (msg.type === 'health') {
     try {
-      const r = await fetch(`${baseUrl(cfg.port)}/health`, { method: 'GET' });
-      return { ok: r.ok };
+      return { ok: await checkHealth(cfg.port) };
     } catch {
       return { ok: false, error: 'unreachable' };
     }
@@ -29,6 +49,7 @@ async function handle(msg: BgMessage): Promise<IngestResponse> {
       body: JSON.stringify(payload),
     });
     const json = (await r.json().catch(() => ({}))) as Partial<IngestResponse>;
+    if (r.ok) void checkHealth(cfg.port).catch(() => {});
     return { ok: r.ok, ...json };
   } catch {
     return { ok: false, error: 'unreachable' };

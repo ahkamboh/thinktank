@@ -44,8 +44,9 @@ I run a local MCP server named "thinktank" — my shared memory across all my AI
 - Do NOT save chit-chat, transient one-off requests, or secrets (API keys, tokens, passwords, credentialed URLs).
 ```
 
-(The thinktank MCP server must also be enabled in Claude Desktop's MCP/connector
-settings for these tools to be available.)
+(The tools only show up once the thinktank MCP server is in Claude Desktop's
+config: run `node packages/cli/dist/cli.js setup --claude-desktop`, then quit
+and reopen Claude Desktop.)
 
 ## (c) Honest note on reliability
 
