@@ -17,7 +17,7 @@ const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
 const { InMemoryTransport } = await import('@modelcontextprotocol/sdk/inMemory.js');
 const { createServer } = await import('../src/server.js');
 const { startHttp, DEFAULT_HTTP_PORT } = await import('../src/http.js');
-const { closeBrain } = await import('../src/store.js');
+const { closeBrain, getBrain } = await import('../src/store.js');
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -110,6 +110,83 @@ async function main() {
 
   const statsRes = await client.callTool({ name: 'memory_stats', arguments: {} });
   assert(/total: [1-9]/.test(textOf(statsRes)), 'memory_stats reports >=1 memory');
+  assert(
+    /journal_mode=wal, busy_timeout=5000ms/.test(textOf(statsRes)),
+    'memory_stats shows WAL + busy_timeout',
+  );
+
+  // ------------------------------------------ memory_save stores ONE note
+  console.log('\nScenario 1b: memory_save keeps a note whole');
+  const note =
+    'Never run the full cargo test on his Mac. Tag = version. Run only the test file you touched (e.g. tests/parser.rs).';
+  const noteRes = await client.callTool({
+    name: 'memory_save',
+    arguments: { text: note, project: 'notes-proj', kind: 'constraint', source: 'claude-code' },
+  });
+  assert(
+    (textOf(noteRes).match(/remembered/g) ?? []).length === 1,
+    'a 3-sentence note is saved as exactly one memory',
+  );
+  const notesRecent = textOf(
+    await client.callTool({ name: 'memory_recent', arguments: { project: 'notes-proj' } }),
+  );
+  assert(notesRecent.includes(note), 'the stored memory is the whole note, verbatim');
+
+  // ---------------------------------- memory_resume: newest + standing rules
+  console.log('\nScenario 1c: memory_resume keeps newest work and old rules');
+  const { store } = getBrain();
+  const day = 86_400_000;
+  await store.save({ source: 'cursor', ts: Date.now() - 90 * day, project: 'resume-proj', text: 'Never push to main without a review.', kind: 'constraint' });
+  for (let i = 40; i >= 1; i--) {
+    await store.save({ source: 'cursor', ts: Date.now() - i * 60_000, project: 'resume-proj', text: `Decision log ${i}: we picked option ${i} for the importer.`, kind: 'decision' });
+  }
+  await store.save({ source: 'cursor', ts: Date.now(), project: 'resume-proj', text: 'Newest: the importer refactor is merged.', kind: 'state' });
+  const resume = textOf(
+    await client.callTool({ name: 'memory_resume', arguments: { project: 'resume-proj' } }),
+  );
+  console.log(`  resume ->\n${resume.split('\n').map((l) => `    ${l}`).join('\n')}`);
+  const firstLine = resume.split('\n')[1] ?? '';
+  assert(/Newest: the importer refactor is merged/.test(firstLine), 'the newest memory (a state) leads the resume');
+  assert(/Never push to main without a review/.test(resume), 'a 90-day-old constraint is still in the resume');
+
+  // ------------------------------- memory_search: scoped, normalized, fallback
+  console.log('\nScenario 1d: memory_search scope + global fallback');
+  const normalized = textOf(
+    await client.callTool({ name: 'memory_search', arguments: { query: 'how do we authenticate users?', project: 'Smoke_Proj' } }),
+  );
+  assert(/JWT/.test(normalized), 'project "Smoke_Proj" matches memories saved under "smoke-proj"');
+  const fallback = textOf(
+    await client.callTool({ name: 'memory_search', arguments: { query: 'how do we authenticate users?', project: 'empty-proj' } }),
+  );
+  console.log('  fallback ->', fallback.replace(/\n/g, ' | '));
+  assert(
+    /Possibly related, from other projects:/.test(fallback) && /JWT.*\[project: smoke-proj\]/.test(fallback),
+    'a scope with no hits falls back to global semantic results, labelled by project',
+  );
+  const offTopic = textOf(
+    await client.callTool({ name: 'memory_search', arguments: { query: 'how do we authenticate users?', project: 'notes-proj' } }),
+  );
+  assert(
+    !/cargo test/.test(offTopic) && /Possibly related, from other projects:[\s\S]*JWT/.test(offTopic),
+    'a scope with only unrelated memories also falls back (no irrelevant scoped hits)',
+  );
+
+  // ------------------------------- banner: only genuinely open contradictions
+  console.log('\nScenario 1e: contradiction banner');
+  await client.callTool({ name: 'memory_save', arguments: { text: 'For authentication, we decided to use sessions.', project: 'banner-proj', kind: 'decision' } });
+  const flip = await client.callTool({ name: 'memory_save', arguments: { text: 'For authentication, we now use JWT instead of sessions.', project: 'banner-proj', kind: 'decision' } });
+  assert(/superseded older/.test(textOf(flip)), 'a real flip supersedes the older decision');
+  const x = await store.save({ source: 'cursor', ts: Date.now() - day, project: 'banner-proj', text: 'Beep watch tiles: Ali chose two tiles on 19 Oct 2026.', kind: 'decision' });
+  const y = await store.save({ source: 'cursor', ts: Date.now(), project: 'banner-proj', text: 'Beep request screens use a single small word as the title.', kind: 'decision' });
+  store.supersede(x.id, y.id);
+  store.logContradiction({ project: 'banner-proj', topic: 'beep', active: store.getById(y.id)!, superseded: store.getById(x.id)! });
+  const bannerResume = textOf(
+    await client.callTool({ name: 'memory_resume', arguments: { project: 'banner-proj' } }),
+  );
+  assert(
+    /Heads up: 1 unresolved contradiction/.test(bannerResume),
+    'the banner counts the real conflict only, not a logged false positive',
+  );
 
   await client.close();
   await server.close();

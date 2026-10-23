@@ -5,7 +5,14 @@
  *
  * Run: pnpm --filter @thinktank/core test:extract
  */
-import { HeuristicExtractor, isNoise, HeuristicClassifier } from '../src/index.js';
+import {
+  HeuristicExtractor,
+  isNoise,
+  HeuristicClassifier,
+  splitSentences,
+  noteCandidates,
+  chunkNote,
+} from '../src/index.js';
 import type { MemoryEvent } from '../src/index.js';
 
 let failures = 0;
@@ -78,6 +85,78 @@ async function main() {
   const judged = await clf.classify(['thanks!', 'We use JWT for auth.']);
   assert(judged[0]!.drop === true, 'classifier drops "thanks!"');
   assert(judged[1]!.drop === false, 'classifier keeps the JWT decision');
+
+  // ---- Sentence splitter (chat-mode only) ------------------------------------
+  console.log('\nSentence splitter:');
+  const splits: Array<[string, string[]]> = [
+    [
+      'Use pnpm, e.g. for the web app. Never use npm.',
+      ['Use pnpm, e.g. for the web app.', 'Never use npm.'],
+    ],
+    [
+      'Dr. Smith approved it. The U.S. team ships Monday.',
+      ['Dr. Smith approved it.', 'The U.S. team ships Monday.'],
+    ],
+    [
+      'The admin API (v2. Beta. Not public) is internal. It runs on Fly.',
+      ['The admin API (v2. Beta. Not public) is internal.', 'It runs on Fly.'],
+    ],
+    [
+      'Run `make build. Then deploy` first. Next step is QA.',
+      ['Run `make build. Then deploy` first.', 'Next step is QA.'],
+    ],
+    [
+      'Port No. 5 is the default. Plan B. Ali signed off.',
+      ['Port No. 5 is the default.', 'Plan B. Ali signed off.'],
+    ],
+    ['Ship it. Really?! Yes.', ['Ship it.', 'Really?!', 'Yes.']],
+  ];
+  for (const [input, want] of splits) {
+    const got = splitSentences(input);
+    assert(
+      JSON.stringify(got) === JSON.stringify(want),
+      `split "${input}" -> ${want.length} sentence(s)${
+        JSON.stringify(got) === JSON.stringify(want) ? '' : ` (got ${JSON.stringify(got)})`
+      }`,
+    );
+  }
+
+  // ---- Split pieces get their own kind ---------------------------------------
+  console.log('\nPer-sentence kinds in chat mode:');
+  const pieces = await Promise.resolve(
+    ex.extract({
+      ...ev('We decided to use JWT for auth. The staging database lives in us-east-1.'),
+      kind: 'decision',
+    }),
+  );
+  assert(pieces.length === 2, 'two sentences -> two candidates');
+  assert(
+    pieces[1]?.kind === 'fact',
+    "a split piece is classified on its own, not stamped with the caller's kind",
+  );
+
+  // ---- Explicit notes (memory_save) ------------------------------------------
+  console.log('\nNotes:');
+  const noteText =
+    'Never run the full cargo test on his Mac. Tag = version. Run the test file you touched.';
+  const nc = noteCandidates({ ...ev(noteText), kind: 'constraint' });
+  assert(nc.length === 1 && nc[0]!.text === noteText, 'a note is one candidate, verbatim');
+  assert(nc[0]?.kind === 'constraint', "a note keeps the caller's kind");
+  assert(
+    noteCandidates(ev('Use pnpm. Not npm.'))[0]?.text === 'Use pnpm. Not npm.',
+    'short imperative rules are kept in a note (isNoise would drop "Not npm.")',
+  );
+  assert(noteCandidates(ev('ok')).length === 0, 'a filler note ("ok") is dropped');
+  assert(
+    noteCandidates(ev('Prefer tables over prose.'))[0]?.kind === 'preference',
+    'a note without a kind is classified as a whole',
+  );
+  const big = Array.from({ length: 30 }, (_, i) => `Fact ${i}: the importer handles case ${i} by retrying twice.`).join(' ');
+  const parts = chunkNote(big, 500);
+  assert(
+    parts.length > 1 && parts.every((p) => p.length <= 500) && parts.join(' ') === big,
+    `chunkNote splits on sentence boundaries without losing text (${parts.length} chunks)`,
+  );
 
   console.log(
     failures === 0

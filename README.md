@@ -70,12 +70,20 @@ Capture  ->  Merge engine            ->  One local DB     ->  Smart retrieval   
 - **Redact** - every ingest path strips secrets (API keys, AWS keys, tokens,
   private keys, credentialed URLs, `KEY=secret` pairs) *before* anything is
   embedded, indexed, or stored.
-- **Merge** - raw chat is distilled into atomic memories
-  (`decision | fact | preference | constraint | state | code`), de-duplicated,
-  and conflicts are resolved (newest wins, older marked superseded and logged).
-- **Store** - a single local SQLite database. Private by design.
-- **Retrieve** - hybrid semantic + keyword search returns a small,
-  token-budgeted set so agents get signal, not 50k tokens of history.
+- **Merge** - a note saved with `memory_save` is kept as one memory, as
+  written. Raw chat and exports are split into atomic memories
+  (`decision | fact | preference | constraint | state | code`). Exact repeats
+  are de-duplicated, and when a short statement flips an older one (same
+  subject, different value) the newest wins; the older one is marked
+  superseded and logged.
+- **Store** - a single local SQLite database (WAL mode, so every open agent
+  session can share it). Private by design.
+- **Retrieve** - hybrid semantic + keyword search, scoped to the project inside
+  the index, returns a small token-budgeted set so agents get signal, not 50k
+  tokens of history. `memory_resume` leads with the newest work, then standing
+  constraints and preferences. Project names match regardless of case and
+  `-`/`_`; to map another name (say, a worktree folder) to a project, add it
+  to `~/.thinktank/aliases.json` as `{ "my-app-worktree": "my-app" }`.
 
 ## Quick start
 

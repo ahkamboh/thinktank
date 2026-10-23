@@ -1,7 +1,9 @@
+import { dirname, join } from 'node:path';
 import {
   MemoryStore,
   MergeEngine,
   DEFAULT_DB_PATH,
+  loadProjectAliases,
   pickExtractor,
   resolveCipher,
 } from '@thinktank/core';
@@ -13,6 +15,14 @@ import {
  */
 export function resolveDbPath(): string {
   return process.env.THINKTANK_DB?.trim() || DEFAULT_DB_PATH;
+}
+
+/**
+ * Optional `{ "alias": "canonical" }` project alias file: THINKTANK_ALIASES, or
+ * aliases.json next to the database. Missing = no aliases.
+ */
+export function resolveAliasPath(dbPath: string): string {
+  return process.env.THINKTANK_ALIASES?.trim() || join(dirname(dbPath), 'aliases.json');
 }
 
 export interface Brain {
@@ -32,7 +42,10 @@ export function getBrain(): Brain {
   if (!singleton) {
     const dbPath = resolveDbPath();
     // resolveCipher() returns null unless THINKTANK_ENCRYPT is enabled.
-    const store = new MemoryStore(dbPath, { cipher: resolveCipher() });
+    const store = new MemoryStore(dbPath, {
+      cipher: resolveCipher(),
+      projectAliases: loadProjectAliases(resolveAliasPath(dbPath)),
+    });
     const engine = new MergeEngine(store, { extractor: pickExtractor() });
     singleton = { store, engine, dbPath };
   }

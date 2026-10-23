@@ -116,6 +116,47 @@ async function main() {
     assert(r.found.length === 0 && r.text === b, `benign prose untouched: "${b.slice(0, 32)}..."`);
   }
 
+  // ------------------------------------------- paths + URLs are not secrets
+  // Every one of these was replaced by [REDACTED:token] by the old generic
+  // high-entropy rule (long, letters + digits, many distinct chars).
+  const paths = [
+    'Outputs go to ~/Documents/claude/plot33-house-map/output/plot33_v3_12oct2026.pdf now.',
+    'The viewer is at ~/Documents/claude/plot33-house-3d/arch1/3d-viewer-arch1/index_v4_walk.html today.',
+    'See https://github.com/ahkamboh/thinktank/blob/305fe78a1c2b3d4e5f60718293a4b5c6d7e8f901/packages/core/src/db.ts for it.',
+    'Copies: plot33-house-3d/arch1/src/architect-21oct2026-final-v57.pdf and more.',
+    'Bundles are in ~/Documents/claude/privacy-cleanup-22oct2026/pre-purge-bundles/ for safety.',
+    'Saved at watch/design/bean_outline_from_reference_v2_19oct2026.json yesterday.',
+    'Each brand has its own repo (fundedroll-graph-servers/s1-broker/src/handlers/withdrawal2.ts).',
+    'Settings at https://app.example.com/projects/123e4567-e89b-12d3-a456-426614174000/settings ok.',
+  ];
+  for (const p of paths) {
+    const r = redactSecrets(p);
+    assert(r.found.length === 0 && r.text === p, `path/URL untouched: "${p.slice(0, 48)}..."`);
+  }
+
+  // ...but tokens hiding in or shaped like paths are still caught.
+  {
+    const r = redactSecrets('the reset link is https://example.com/reset/9fK2LmQ8xZ4vB7nR1tY6wP3sD0hJ5cGa now');
+    assert(
+      r.text === 'the reset link is https://example.com/reset/[REDACTED:token] now',
+      'a token segment inside a URL is redacted, the rest of the URL kept',
+    );
+  }
+  {
+    // Built from parts so the fake webhook doesn't trip GitHub push protection.
+    const hook = ['https://hooks.slack' + '.com', 'services', 'T04A1B2C3', 'B05D6E7F8', 'Zk8QwP3nR7tYb2LmX9vC4hJd'].join('/');
+    const r = redactSecrets(`Hook: ${hook} please.`);
+    assert(!r.text.includes('Zk8QwP3nR7tYb2LmX9vC4hJd'), 'a webhook URL secret is redacted');
+  }
+  {
+    const r = redactSecrets('aws secret wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY ok');
+    assert(r.text === 'aws secret [REDACTED:token] ok', 'a base64 secret containing "/" is redacted whole');
+  }
+  {
+    const r = redactSecrets('token Q2xhdWRlQ29kZTEyMzQ1Njc4OTBhYmNkZWZnaGlqa2xtbm9w end');
+    assert(r.text === 'token [REDACTED:token] end', 'a generic 48-char random token is still redacted');
+  }
+
   // ---------------------------------------------------------- pipeline wiring
   console.log('\nPipeline: a secret in an ingested message never reaches the DB');
   const dir = mkdtempSync(join(tmpdir(), 'thinktank-redact-'));
